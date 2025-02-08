@@ -56,5 +56,9 @@
   },
   "dependencies": {
     "zod": "^3.24.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Eleven-am/korm.git"
   }
 }
