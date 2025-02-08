@@ -1,15 +1,3 @@
-export interface KsqlDBCommandResponse {
-    statementText: string;
-    commandId?: string;
-    commandStatus: {
-        status: 'SUCCESS' | 'ERROR' | 'PENDING' | 'TERMINATED';
-        message: string;
-        queryId?: string;
-    };
-    commandSequenceNumber: number;
-    warnings: string[];
-}
-
 export interface StreamsProperties {
     [key: string]: string;
 }
@@ -19,11 +7,13 @@ export interface KsqlDBRequestConfig {
     commandSequenceNumber?: number;
 }
 
-export type KsqlDBResponse = KsqlDBCommandResponse[];
-
-export interface ServerInfo {
-    version: string;
-    kafkaClusterId: string;
-    ksqlServiceId: string;
-    serverStatus: 'RUNNING' | 'ERROR' | 'DEGRADED';
+export interface KsqlDBConfig {
+    host: string;
+    port: number;
+    protocol?: 'http' | 'https';
+    auth?: {
+        username: string;
+        password: string;
+    };
+    defaultStreamProperties?: StreamsProperties;
 }
