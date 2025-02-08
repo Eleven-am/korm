@@ -46,35 +46,47 @@ const client = new KsqlDBClient({
 ```
 
 ### Simple Query Example
+
 ```typescript
 // Building a query to count orders
-const countOrdersQuery = {
-  type: SelectType.COLUMN,
-  columns: [{
+import { KSQLStatement } from './statements';
+
+const countOrdersQuery: KSQLStatement = {
     type: SelectType.COLUMN,
-    expression: {
-      type: ExpressionType.TRANSFORMATION,
-      value: {
-        type: TransformType.AGGREGATE,
-        function: AggregateFunction.COUNT,
-        parameters: []
-      }
+    columns: [
+        {
+            type: SelectType.COLUMN,
+            expression: {
+                type: ExpressionType.TRANSFORMATION,
+                value: {
+                    type: TransformType.AGGREGATE,
+                    function: AggregateFunction.COUNT,
+                    parameters: []
+                }
+            },
+            alias: 'total_orders'
+        }
+    ],
+    from: {
+        sourceType: DataSourceType.STREAM,
+        source: {
+            type: SourceType.DIRECT,
+            name: 'orders',
+            sourceType: DataSourceType.STREAM
+        }
     },
-    alias: 'total_orders'
-  }],
-  from: {
-    sourceType: DataSourceType.STREAM,
-    source: {
-      type: SourceType.DIRECT,
-      name: 'orders',
-      sourceType: DataSourceType.STREAM
-    }
-  },
-  groupBy: {
-    columns: []
-  },
-  emit: EmitType.CHANGES
+    groupBy: {
+        columns: []
+    },
+    emit: EmitType.CHANGES
 };
+
+// Equivalent SQL:
+
+// SELECT COUNT(*) AS total_orders
+// FROM orders
+// GROUP BY
+// EMIT CHANGES;
 
 // Execute the query
 const result = await client.executeStatement(countOrdersQuery);
