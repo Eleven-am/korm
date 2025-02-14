@@ -44,9 +44,12 @@ import {
     OrderDirection,
     EmitType,
     DateFunction,
-    CollectionFunction, WindowedSelectQuery, WindowFunction, NumericFunction,
+    CollectionFunction,
+    WindowedSelectQuery,
+    WindowFunction,
+    NumericFunction,
+    KSQLStatement,
 } from './types';
-import { KSQLStatement } from './types';
 
 const complexQuery: KSQLStatement = {
     type: SelectType.COLUMN,
@@ -55,16 +58,16 @@ const complexQuery: KSQLStatement = {
             type: SelectType.COLUMN,
             expression: {
                 type: ExpressionType.COLUMN,
-                sourceColumn: 'p.product_id'
-            }
+                sourceColumn: 'p.product_id',
+            },
         },
         {
             type: SelectType.COLUMN,
             expression: {
                 type: ExpressionType.COLUMN,
-                sourceColumn: 'p.name'
+                sourceColumn: 'p.name',
             },
-            alias: 'product_name'
+            alias: 'product_name',
         },
         {
             type: SelectType.COLUMN,
@@ -72,11 +75,11 @@ const complexQuery: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.COUNT,
-                    parameters: []
-                }
+                    'function': AggregateFunction.COUNT,
+                    parameters: [],
+                },
             },
-            alias: 'total_purchases'
+            alias: 'total_purchases',
         },
         {
             type: SelectType.COLUMN,
@@ -84,14 +87,16 @@ const complexQuery: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.SUM,
-                    parameters: [{
-                        type: ExpressionType.COLUMN,
-                        sourceColumn: 'o.quantity'
-                    }]
-                }
+                    'function': AggregateFunction.SUM,
+                    parameters: [
+                        {
+                            type: ExpressionType.COLUMN,
+                            sourceColumn: 'o.quantity',
+                        },
+                    ],
+                },
             },
-            alias: 'total_quantity'
+            alias: 'total_quantity',
         },
         {
             type: SelectType.COLUMN,
@@ -99,25 +104,27 @@ const complexQuery: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.SUM,
-                    parameters: [{
-                        type: ExpressionType.TRANSFORMATION,
-                        value: {
-                            type: TransformType.ARITHMETIC,
-                            operator: ArithmeticOperator.MULTIPLY,
-                            left: {
-                                type: ExpressionType.COLUMN,
-                                sourceColumn: 'o.quantity'
+                    'function': AggregateFunction.SUM,
+                    parameters: [
+                        {
+                            type: ExpressionType.TRANSFORMATION,
+                            value: {
+                                type: TransformType.ARITHMETIC,
+                                operator: ArithmeticOperator.MULTIPLY,
+                                left: {
+                                    type: ExpressionType.COLUMN,
+                                    sourceColumn: 'o.quantity',
+                                },
+                                right: {
+                                    type: ExpressionType.COLUMN,
+                                    sourceColumn: 'p.price',
+                                },
                             },
-                            right: {
-                                type: ExpressionType.COLUMN,
-                                sourceColumn: 'p.price'
-                            }
-                        }
-                    }]
-                }
+                        },
+                    ],
+                },
             },
-            alias: 'total_revenue'
+            alias: 'total_revenue',
         },
         {
             type: SelectType.COLUMN,
@@ -125,15 +132,17 @@ const complexQuery: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.COLLECT_LIST,
-                    parameters: [{
-                        type: ExpressionType.COLUMN,
-                        sourceColumn: 'o.user_id'
-                    }]
-                }
+                    'function': AggregateFunction.COLLECT_LIST,
+                    parameters: [
+                        {
+                            type: ExpressionType.COLUMN,
+                            sourceColumn: 'o.user_id',
+                        },
+                    ],
+                },
             },
-            alias: 'buyer_list'
-        }
+            alias: 'buyer_list',
+        },
     ],
     from: {
         sourceType: DataSourceType.STREAM,
@@ -141,7 +150,7 @@ const complexQuery: KSQLStatement = {
             type: SourceType.DIRECT,
             name: 'orders_stream',
             alias: 'o',
-            sourceType: DataSourceType.STREAM
+            sourceType: DataSourceType.STREAM,
         },
         joins: [
             {
@@ -149,26 +158,30 @@ const complexQuery: KSQLStatement = {
                 source: {
                     name: 'products_table',
                     alias: 'p',
-                    sourceType: DataSourceType.TABLE
+                    sourceType: DataSourceType.TABLE,
                 },
-                conditions: [{
-                    leftField: 'o.product_id',
-                    rightField: 'p.product_id'
-                }]
+                conditions: [
+                    {
+                        leftField: 'o.product_id',
+                        rightField: 'p.product_id',
+                    },
+                ],
             },
             {
                 type: JoinType.LEFT_OUTER,
                 source: {
                     name: 'inventory_table',
                     alias: 'i',
-                    sourceType: DataSourceType.TABLE
+                    sourceType: DataSourceType.TABLE,
                 },
-                conditions: [{
-                    leftField: 'p.product_id',
-                    rightField: 'i.product_id'
-                }]
-            }
-        ]
+                conditions: [
+                    {
+                        leftField: 'p.product_id',
+                        rightField: 'i.product_id',
+                    },
+                ],
+            },
+        ],
     },
     where: {
         type: WhereType.LOGICAL,
@@ -179,53 +192,53 @@ const complexQuery: KSQLStatement = {
                 operator: ComparisonOperator.EQUAL,
                 left: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'o.status'
+                    sourceColumn: 'o.status',
                 },
                 right: {
                     type: ExpressionType.LITERAL,
-                    value: 'COMPLETED'
-                }
+                    value: 'COMPLETED',
+                },
             },
             {
                 type: WhereType.COMPARISON,
                 operator: ComparisonOperator.GREATER_THAN,
                 left: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'o.quantity'
+                    sourceColumn: 'o.quantity',
                 },
                 right: {
                     type: ExpressionType.LITERAL,
-                    value: 0
-                }
+                    value: 0,
+                },
             },
             {
                 type: WhereType.COMPARISON,
                 operator: ComparisonOperator.GREATER_THAN,
                 left: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'p.price'
+                    sourceColumn: 'p.price',
                 },
                 right: {
                     type: ExpressionType.LITERAL,
-                    value: 10.00
-                }
-            }
-        ]
+                    value: 10.00,
+                },
+            },
+        ],
     },
     groupBy: {
         columns: [
             {
                 expression: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'p.product_id'
-                }
+                    sourceColumn: 'p.product_id',
+                },
             },
             {
                 expression: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'p.name'
-                }
-            }
+                    sourceColumn: 'p.name',
+                },
+            },
         ],
         window: {
             name: 'W1',
@@ -233,17 +246,17 @@ const complexQuery: KSQLStatement = {
                 type: WindowType.TUMBLING,
                 size: {
                     value: 1,
-                    unit: WindowTimeUnit.HOURS
+                    unit: WindowTimeUnit.HOURS,
                 },
                 retention: {
                     value: 24,
-                    unit: WindowTimeUnit.HOURS
+                    unit: WindowTimeUnit.HOURS,
                 },
                 gracePeriod: {
                     value: 10,
-                    unit: WindowTimeUnit.MINUTES
-                }
-            }
+                    unit: WindowTimeUnit.MINUTES,
+                },
+            },
         },
         having: {
             type: HavingConditionType.LOGICAL,
@@ -251,65 +264,73 @@ const complexQuery: KSQLStatement = {
             conditions: [
                 {
                     type: HavingConditionType.AGGREGATE,
-                    function: AggregateFunction.COUNT,
+                    'function': AggregateFunction.COUNT,
                     parameters: [],
                     operator: ComparisonOperator.GREATER_THAN,
                     right: {
                         type: ExpressionType.LITERAL,
-                        value: 5
-                    }
+                        value: 5,
+                    },
                 },
                 {
                     type: HavingConditionType.AGGREGATE,
-                    function: AggregateFunction.SUM,
-                    parameters: [{
-                        type: ExpressionType.COLUMN,
-                        sourceColumn: 'o.quantity'
-                    }],
+                    'function': AggregateFunction.SUM,
+                    parameters: [
+                        {
+                            type: ExpressionType.COLUMN,
+                            sourceColumn: 'o.quantity',
+                        },
+                    ],
                     operator: ComparisonOperator.GREATER_THAN_OR_EQUAL,
                     right: {
                         type: ExpressionType.LITERAL,
-                        value: 100
-                    }
-                }
-            ]
-        }
+                        value: 100,
+                    },
+                },
+            ],
+        },
     },
     partitionBy: {
-        columns: [{
-            type: ExpressionType.COLUMN,
-            sourceColumn: 'p.category'
-        }]
+        columns: [
+            {
+                type: ExpressionType.COLUMN,
+                sourceColumn: 'p.category',
+            },
+        ],
     },
     orderBy: {
-        columns: [{
-            type: OrderByType.WINDOWED,
-            expression: {
-                type: ExpressionType.TRANSFORMATION,
-                value: {
-                    type: TransformType.AGGREGATE,
-                    function: AggregateFunction.SUM,
-                    parameters: [{
-                        type: ExpressionType.TRANSFORMATION,
-                        value: {
-                            type: TransformType.ARITHMETIC,
-                            operator: ArithmeticOperator.MULTIPLY,
-                            left: {
-                                type: ExpressionType.COLUMN,
-                                sourceColumn: 'o.quantity'
+        columns: [
+            {
+                type: OrderByType.WINDOWED,
+                expression: {
+                    type: ExpressionType.TRANSFORMATION,
+                    value: {
+                        type: TransformType.AGGREGATE,
+                        'function': AggregateFunction.SUM,
+                        parameters: [
+                            {
+                                type: ExpressionType.TRANSFORMATION,
+                                value: {
+                                    type: TransformType.ARITHMETIC,
+                                    operator: ArithmeticOperator.MULTIPLY,
+                                    left: {
+                                        type: ExpressionType.COLUMN,
+                                        sourceColumn: 'o.quantity',
+                                    },
+                                    right: {
+                                        type: ExpressionType.COLUMN,
+                                        sourceColumn: 'p.price',
+                                    },
+                                },
                             },
-                            right: {
-                                type: ExpressionType.COLUMN,
-                                sourceColumn: 'p.price'
-                            }
-                        }
-                    }]
-                }
+                        ],
+                    },
+                },
+                direction: OrderDirection.DESC,
             },
-            direction: OrderDirection.DESC
-        }]
+        ],
     },
-    emit: EmitType.CHANGES
+    emit: EmitType.CHANGES,
 };
 
 const builder = new KSQLStatementBuilder();
@@ -353,8 +374,8 @@ const complexQuery2: KSQLStatement = {
             type: SelectType.COLUMN,
             expression: {
                 type: ExpressionType.COLUMN,
-                sourceColumn: 'customer_id'
-            }
+                sourceColumn: 'customer_id',
+            },
         },
         {
             type: SelectType.COLUMN,
@@ -362,20 +383,20 @@ const complexQuery2: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.DATE,
-                    function: DateFunction.TIMESTAMPTOSTRING,
+                    'function': DateFunction.TIMESTAMPTOSTRING,
                     parameters: [
                         {
                             type: ExpressionType.COLUMN,
-                            sourceColumn: 'order_timestamp'
+                            sourceColumn: 'order_timestamp',
                         },
                         {
                             type: ExpressionType.LITERAL,
-                            value: 'yyyy-MM-dd HH:mm:ss'
-                        }
-                    ]
-                }
+                            value: 'yyyy-MM-dd HH:mm:ss',
+                        },
+                    ],
+                },
             },
-            alias: 'order_time'
+            alias: 'order_time',
         },
         {
             type: SelectType.COLUMN,
@@ -383,16 +404,16 @@ const complexQuery2: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.COLLECTION,
-                    function: CollectionFunction.COLLECT_SET,
+                    'function': CollectionFunction.COLLECT_SET,
                     parameters: [
                         {
                             type: ExpressionType.COLUMN,
-                            sourceColumn: 'product_name'
-                        }
-                    ]
-                }
+                            sourceColumn: 'product_name',
+                        },
+                    ],
+                },
             },
-            alias: 'unique_products'
+            alias: 'unique_products',
         },
         {
             type: SelectType.COLUMN,
@@ -400,25 +421,25 @@ const complexQuery2: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.COLLECTION,
-                    function: CollectionFunction.ARRAY_LENGTH,
+                    'function': CollectionFunction.ARRAY_LENGTH,
                     parameters: [
                         {
                             type: ExpressionType.TRANSFORMATION,
                             value: {
                                 type: TransformType.COLLECTION,
-                                function: CollectionFunction.COLLECT_LIST,
+                                'function': CollectionFunction.COLLECT_LIST,
                                 parameters: [
                                     {
                                         type: ExpressionType.COLUMN,
-                                        sourceColumn: 'product_id'
-                                    }
-                                ]
-                            }
-                        }
-                    ]
-                }
+                                        sourceColumn: 'product_id',
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
             },
-            alias: 'total_items'
+            alias: 'total_items',
         },
         {
             type: SelectType.COLUMN,
@@ -426,16 +447,16 @@ const complexQuery2: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.MAX,
+                    'function': AggregateFunction.MAX,
                     parameters: [
                         {
                             type: ExpressionType.COLUMN,
-                            sourceColumn: 'unit_price'
-                        }
-                    ]
-                }
+                            sourceColumn: 'unit_price',
+                        },
+                    ],
+                },
             },
-            alias: 'highest_price'
+            alias: 'highest_price',
         },
         {
             type: SelectType.COLUMN,
@@ -454,7 +475,7 @@ const complexQuery2: KSQLStatement = {
                                         type: ExpressionType.TRANSFORMATION,
                                         value: {
                                             type: TransformType.AGGREGATE,
-                                            function: AggregateFunction.SUM,
+                                            'function': AggregateFunction.SUM,
                                             parameters: [
                                                 {
                                                     type: ExpressionType.TRANSFORMATION,
@@ -463,27 +484,27 @@ const complexQuery2: KSQLStatement = {
                                                         operator: ArithmeticOperator.MULTIPLY,
                                                         left: {
                                                             type: ExpressionType.COLUMN,
-                                                            sourceColumn: 'quantity'
+                                                            sourceColumn: 'quantity',
                                                         },
                                                         right: {
                                                             type: ExpressionType.COLUMN,
-                                                            sourceColumn: 'unit_price'
-                                                        }
-                                                    }
-                                                }
-                                            ]
-                                        }
+                                                            sourceColumn: 'unit_price',
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
                                     },
                                     right: {
                                         type: ExpressionType.LITERAL,
-                                        value: 1000
-                                    }
-                                }
+                                        value: 1000,
+                                    },
+                                },
                             },
                             then: {
                                 type: ExpressionType.LITERAL,
-                                value: 'HIGH'
-                            }
+                                value: 'HIGH',
+                            },
                         },
                         {
                             when: {
@@ -495,7 +516,7 @@ const complexQuery2: KSQLStatement = {
                                         type: ExpressionType.TRANSFORMATION,
                                         value: {
                                             type: TransformType.AGGREGATE,
-                                            function: AggregateFunction.SUM,
+                                            'function': AggregateFunction.SUM,
                                             parameters: [
                                                 {
                                                     type: ExpressionType.TRANSFORMATION,
@@ -504,37 +525,37 @@ const complexQuery2: KSQLStatement = {
                                                         operator: ArithmeticOperator.MULTIPLY,
                                                         left: {
                                                             type: ExpressionType.COLUMN,
-                                                            sourceColumn: 'quantity'
+                                                            sourceColumn: 'quantity',
                                                         },
                                                         right: {
                                                             type: ExpressionType.COLUMN,
-                                                            sourceColumn: 'unit_price'
-                                                        }
-                                                    }
-                                                }
-                                            ]
-                                        }
+                                                            sourceColumn: 'unit_price',
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
                                     },
                                     right: {
                                         type: ExpressionType.LITERAL,
-                                        value: 500
-                                    }
-                                }
+                                        value: 500,
+                                    },
+                                },
                             },
                             then: {
                                 type: ExpressionType.LITERAL,
-                                value: 'MEDIUM'
-                            }
-                        }
+                                value: 'MEDIUM',
+                            },
+                        },
                     ],
-                    else: {
+                    'else': {
                         type: ExpressionType.LITERAL,
-                        value: 'LOW'
-                    }
-                }
+                        value: 'LOW',
+                    },
+                },
             },
-            alias: 'order_value_category'
-        }
+            alias: 'order_value_category',
+        },
     ],
     from: {
         sourceType: DataSourceType.STREAM,
@@ -542,7 +563,7 @@ const complexQuery2: KSQLStatement = {
             type: SourceType.DIRECT,
             name: 'customer_orders_stream',
             alias: 'c',
-            sourceType: DataSourceType.STREAM
+            sourceType: DataSourceType.STREAM,
         },
         joins: [
             {
@@ -550,14 +571,16 @@ const complexQuery2: KSQLStatement = {
                 source: {
                     name: 'product_details',
                     alias: 'p',
-                    sourceType: DataSourceType.TABLE
+                    sourceType: DataSourceType.TABLE,
                 },
-                conditions: [{
-                    leftField: 'c.product_id',
-                    rightField: 'p.id'
-                }]
-            }
-        ]
+                conditions: [
+                    {
+                        leftField: 'c.product_id',
+                        rightField: 'p.id',
+                    },
+                ],
+            },
+        ],
     },
     where: {
         type: WhereType.LOGICAL,
@@ -568,18 +591,18 @@ const complexQuery2: KSQLStatement = {
                 operator: ComparisonOperator.NOT_IN,
                 left: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'c.status'
+                    sourceColumn: 'c.status',
                 },
                 right: [
                     {
                         type: ExpressionType.LITERAL,
-                        value: 'CANCELLED'
+                        value: 'CANCELLED',
                     },
                     {
                         type: ExpressionType.LITERAL,
-                        value: 'REJECTED'
-                    }
-                ]
+                        value: 'REJECTED',
+                    },
+                ],
             },
             {
                 type: WhereType.COMPARISON,
@@ -591,22 +614,22 @@ const complexQuery2: KSQLStatement = {
                         field: 'HOUR',
                         source: {
                             type: ExpressionType.COLUMN,
-                            sourceColumn: 'order_timestamp'
-                        }
-                    }
+                            sourceColumn: 'order_timestamp',
+                        },
+                    },
                 },
                 right: {
                     start: {
                         type: ExpressionType.LITERAL,
-                        value: 9
+                        value: 9,
                     },
                     end: {
                         type: ExpressionType.LITERAL,
-                        value: 17
-                    }
-                }
-            }
-        ]
+                        value: 17,
+                    },
+                },
+            },
+        ],
     },
     groupBy: {
         window: {
@@ -615,59 +638,63 @@ const complexQuery2: KSQLStatement = {
                 type: WindowType.HOPPING,
                 size: {
                     value: 30,
-                    unit: WindowTimeUnit.MINUTES
+                    unit: WindowTimeUnit.MINUTES,
                 },
                 advance: {
                     value: 10,
-                    unit: WindowTimeUnit.MINUTES
+                    unit: WindowTimeUnit.MINUTES,
                 },
                 retention: {
                     value: 24,
-                    unit: WindowTimeUnit.HOURS
+                    unit: WindowTimeUnit.HOURS,
                 },
                 gracePeriod: {
                     value: 10,
-                    unit: WindowTimeUnit.MINUTES
-                }
-            }
+                    unit: WindowTimeUnit.MINUTES,
+                },
+            },
         },
         columns: [
             {
                 expression: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'customer_id'
-                }
-            }
+                    sourceColumn: 'customer_id',
+                },
+            },
         ],
         having: {
             type: HavingConditionType.AGGREGATE,
-            function: AggregateFunction.COUNT,
+            'function': AggregateFunction.COUNT,
             parameters: [],
             operator: ComparisonOperator.GREATER_THAN,
             right: {
                 type: ExpressionType.LITERAL,
-                value: 3
-            }
-        }
+                value: 3,
+            },
+        },
     },
     orderBy: {
-        columns: [{
-            type: OrderByType.WINDOWED,
-            expression: {
-                type: ExpressionType.TRANSFORMATION,
-                value: {
-                    type: TransformType.AGGREGATE,
-                    function: AggregateFunction.MAX,
-                    parameters: [{
-                        type: ExpressionType.COLUMN,
-                        sourceColumn: 'unit_price'
-                    }]
-                }
+        columns: [
+            {
+                type: OrderByType.WINDOWED,
+                expression: {
+                    type: ExpressionType.TRANSFORMATION,
+                    value: {
+                        type: TransformType.AGGREGATE,
+                        'function': AggregateFunction.MAX,
+                        parameters: [
+                            {
+                                type: ExpressionType.COLUMN,
+                                sourceColumn: 'unit_price',
+                            },
+                        ],
+                    },
+                },
+                direction: OrderDirection.DESC,
             },
-            direction: OrderDirection.DESC
-        }]
+        ],
     },
-    emit: EmitType.CHANGES
+    emit: EmitType.CHANGES,
 };
 
 const query2 = builder.build(complexQuery2);
@@ -695,16 +722,16 @@ const anomalyDetectionQuery: WindowedSelectQuery = {
             type: SelectType.COLUMN,
             expression: {
                 type: ExpressionType.COLUMN,
-                sourceColumn: "symbol"
-            }
+                sourceColumn: 'symbol',
+            },
         },
         // price
         {
             type: SelectType.COLUMN,
             expression: {
                 type: ExpressionType.COLUMN,
-                sourceColumn: "price"
-            }
+                sourceColumn: 'price',
+            },
         },
         // price_change_pct calculation
         {
@@ -726,116 +753,116 @@ const anomalyDetectionQuery: WindowedSelectQuery = {
                                     operator: ArithmeticOperator.SUBTRACT,
                                     left: {
                                         type: ExpressionType.COLUMN,
-                                        sourceColumn: "price"
+                                        sourceColumn: 'price',
                                     },
                                     right: {
                                         type: ExpressionType.TRANSFORMATION,
                                         value: {
                                             type: TransformType.WINDOW,
-                                            function: WindowFunction.LAG,
+                                            'function': WindowFunction.LAG,
                                             parameters: [
                                                 {
                                                     type: ExpressionType.COLUMN,
-                                                    sourceColumn: "price"
+                                                    sourceColumn: 'price',
                                                 },
                                                 {
                                                     type: ExpressionType.LITERAL,
-                                                    value: 1
-                                                }
+                                                    value: 1,
+                                                },
                                             ],
                                             over: {
                                                 partitionBy: [
                                                     {
                                                         type: ExpressionType.COLUMN,
-                                                        sourceColumn: "symbol"
-                                                    }
+                                                        sourceColumn: 'symbol',
+                                                    },
                                                 ],
                                                 orderBy: [
                                                     {
                                                         expression: {
                                                             type: ExpressionType.COLUMN,
-                                                            sourceColumn: "ROWTIME"
-                                                        }
-                                                    }
-                                                ]
-                                            }
-                                        }
-                                    }
-                                }
+                                                            sourceColumn: 'ROWTIME',
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                    },
+                                },
                             },
                             right: {
                                 type: ExpressionType.TRANSFORMATION,
                                 value: {
                                     type: TransformType.WINDOW,
-                                    function: WindowFunction.LAG,
+                                    'function': WindowFunction.LAG,
                                     parameters: [
                                         {
                                             type: ExpressionType.COLUMN,
-                                            sourceColumn: "price"
+                                            sourceColumn: 'price',
                                         },
                                         {
                                             type: ExpressionType.LITERAL,
-                                            value: 1
-                                        }
+                                            value: 1,
+                                        },
                                     ],
                                     over: {
                                         partitionBy: [
                                             {
                                                 type: ExpressionType.COLUMN,
-                                                sourceColumn: "symbol"
-                                            }
+                                                sourceColumn: 'symbol',
+                                            },
                                         ],
                                         orderBy: [
                                             {
                                                 expression: {
                                                     type: ExpressionType.COLUMN,
-                                                    sourceColumn: "ROWTIME"
-                                                }
-                                            }
-                                        ]
-                                    }
-                                }
-                            }
-                        }
+                                                    sourceColumn: 'ROWTIME',
+                                                },
+                                            },
+                                        ],
+                                    },
+                                },
+                            },
+                        },
                     },
                     right: {
                         type: ExpressionType.LITERAL,
-                        value: 100
-                    }
-                }
+                        value: 100,
+                    },
+                },
             },
-            alias: "price_change_pct"
-        }
+            alias: 'price_change_pct',
+        },
     ],
     from: {
         sourceType: DataSourceType.STREAM,
         source: {
             type: SourceType.DIRECT,
-            name: "stock_prices",
-            sourceType: DataSourceType.STREAM
-        }
+            name: 'stock_prices',
+            sourceType: DataSourceType.STREAM,
+        },
     },
     groupBy: {
         columns: [
             {
                 expression: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: "symbol"
-                }
-            }
+                    sourceColumn: 'symbol',
+                },
+            },
         ],
         window: {
             spec: {
                 type: WindowType.HOPPING,
                 size: {
                     value: 15,
-                    unit: WindowTimeUnit.MINUTES
+                    unit: WindowTimeUnit.MINUTES,
                 },
                 advance: {
                     value: 1,
-                    unit: WindowTimeUnit.MINUTES
-                }
-            }
+                    unit: WindowTimeUnit.MINUTES,
+                },
+            },
         },
         having: {
             type: HavingConditionType.COMPARISON,
@@ -844,13 +871,13 @@ const anomalyDetectionQuery: WindowedSelectQuery = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.NUMERIC,
-                    function: NumericFunction.ABS,
+                    'function': NumericFunction.ABS,
                     parameters: [
                         {
                             type: ExpressionType.TRANSFORMATION,
                             value: {
                                 type: TransformType.AGGREGATE,
-                                function: AggregateFunction.AVG,
+                                'function': AggregateFunction.AVG,
                                 parameters: [
                                     {
                                         type: ExpressionType.TRANSFORMATION,
@@ -869,97 +896,97 @@ const anomalyDetectionQuery: WindowedSelectQuery = {
                                                             operator: ArithmeticOperator.SUBTRACT,
                                                             left: {
                                                                 type: ExpressionType.COLUMN,
-                                                                sourceColumn: "price"
+                                                                sourceColumn: 'price',
                                                             },
                                                             right: {
                                                                 type: ExpressionType.TRANSFORMATION,
                                                                 value: {
                                                                     type: TransformType.WINDOW,
-                                                                    function: WindowFunction.LAG,
+                                                                    'function': WindowFunction.LAG,
                                                                     parameters: [
                                                                         {
                                                                             type: ExpressionType.COLUMN,
-                                                                            sourceColumn: "price"
+                                                                            sourceColumn: 'price',
                                                                         },
                                                                         {
                                                                             type: ExpressionType.LITERAL,
-                                                                            value: 1
-                                                                        }
+                                                                            value: 1,
+                                                                        },
                                                                     ],
                                                                     over: {
                                                                         partitionBy: [
                                                                             {
                                                                                 type: ExpressionType.COLUMN,
-                                                                                sourceColumn: "symbol"
-                                                                            }
+                                                                                sourceColumn: 'symbol',
+                                                                            },
                                                                         ],
                                                                         orderBy: [
                                                                             {
                                                                                 expression: {
                                                                                     type: ExpressionType.COLUMN,
-                                                                                    sourceColumn: "ROWTIME"
-                                                                                }
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
+                                                                                    sourceColumn: 'ROWTIME',
+                                                                                },
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            },
+                                                        },
                                                     },
                                                     right: {
                                                         type: ExpressionType.TRANSFORMATION,
                                                         value: {
                                                             type: TransformType.WINDOW,
-                                                            function: WindowFunction.LAG,
+                                                            'function': WindowFunction.LAG,
                                                             parameters: [
                                                                 {
                                                                     type: ExpressionType.COLUMN,
-                                                                    sourceColumn: "price"
+                                                                    sourceColumn: 'price',
                                                                 },
                                                                 {
                                                                     type: ExpressionType.LITERAL,
-                                                                    value: 1
-                                                                }
+                                                                    value: 1,
+                                                                },
                                                             ],
                                                             over: {
                                                                 partitionBy: [
                                                                     {
                                                                         type: ExpressionType.COLUMN,
-                                                                        sourceColumn: "symbol"
-                                                                    }
+                                                                        sourceColumn: 'symbol',
+                                                                    },
                                                                 ],
                                                                 orderBy: [
                                                                     {
                                                                         expression: {
                                                                             type: ExpressionType.COLUMN,
-                                                                            sourceColumn: "ROWTIME"
-                                                                        }
-                                                                    }
-                                                                ]
-                                                            }
-                                                        }
-                                                    }
-                                                }
+                                                                            sourceColumn: 'ROWTIME',
+                                                                        },
+                                                                    },
+                                                                ],
+                                                            },
+                                                        },
+                                                    },
+                                                },
                                             },
                                             right: {
                                                 type: ExpressionType.LITERAL,
-                                                value: 100
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    ]
-                }
+                                                value: 100,
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
             },
             right: {
                 type: ExpressionType.LITERAL,
-                value: 2
-            }
-        }
+                value: 2,
+            },
+        },
     },
-    emit: EmitType.CHANGES
+    emit: EmitType.CHANGES,
 };
 
 const query3 = builder.build(anomalyDetectionQuery);
@@ -973,8 +1000,8 @@ const complexHavingQuery: KSQLStatement = {
             type: SelectType.COLUMN,
             expression: {
                 type: ExpressionType.COLUMN,
-                sourceColumn: 'category'
-            }
+                sourceColumn: 'category',
+            },
         },
         {
             type: SelectType.COLUMN,
@@ -982,11 +1009,11 @@ const complexHavingQuery: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.COUNT,
-                    parameters: []
-                }
+                    'function': AggregateFunction.COUNT,
+                    parameters: [],
+                },
             },
-            alias: 'total_events'
+            alias: 'total_events',
         },
         {
             type: SelectType.COLUMN,
@@ -994,32 +1021,34 @@ const complexHavingQuery: KSQLStatement = {
                 type: ExpressionType.TRANSFORMATION,
                 value: {
                     type: TransformType.AGGREGATE,
-                    function: AggregateFunction.AVG,
-                    parameters: [{
-                        type: ExpressionType.COLUMN,
-                        sourceColumn: 'value'
-                    }]
-                }
+                    'function': AggregateFunction.AVG,
+                    parameters: [
+                        {
+                            type: ExpressionType.COLUMN,
+                            sourceColumn: 'value',
+                        },
+                    ],
+                },
             },
-            alias: 'avg_value'
-        }
+            alias: 'avg_value',
+        },
     ],
     from: {
         sourceType: DataSourceType.STREAM,
         source: {
             type: SourceType.DIRECT,
             name: 'events_stream',
-            sourceType: DataSourceType.STREAM
-        }
+            sourceType: DataSourceType.STREAM,
+        },
     },
     groupBy: {
         columns: [
             {
                 expression: {
                     type: ExpressionType.COLUMN,
-                    sourceColumn: 'category'
-                }
-            }
+                    sourceColumn: 'category',
+                },
+            },
         ],
         having: {
             type: HavingConditionType.LOGICAL,
@@ -1033,42 +1062,44 @@ const complexHavingQuery: KSQLStatement = {
                         type: ExpressionType.TRANSFORMATION,
                         value: {
                             type: TransformType.AGGREGATE,
-                            function: AggregateFunction.COUNT,
-                            parameters: [{
-                                type: ExpressionType.TRANSFORMATION,
-                                value: {
-                                    type: TransformType.CASE,
-                                    conditions: [
-                                        {
-                                            when: {
-                                                type: ExpressionType.TRANSFORMATION,
-                                                value: {
-                                                    type: TransformType.COMPARISON,
-                                                    operator: ComparisonOperator.IS_NULL,
-                                                    expression: {
-                                                        type: ExpressionType.COLUMN,
-                                                        sourceColumn: 'value'
+                            'function': AggregateFunction.COUNT,
+                            parameters: [
+                                {
+                                    type: ExpressionType.TRANSFORMATION,
+                                    value: {
+                                        type: TransformType.CASE,
+                                        conditions: [
+                                            {
+                                                when: {
+                                                    type: ExpressionType.TRANSFORMATION,
+                                                    value: {
+                                                        type: TransformType.COMPARISON,
+                                                        operator: ComparisonOperator.IS_NULL,
+                                                        expression: {
+                                                            type: ExpressionType.COLUMN,
+                                                            sourceColumn: 'value',
+                                                        },
                                                     },
-                                                }
+                                                },
+                                                then: {
+                                                    type: ExpressionType.LITERAL,
+                                                    value: 1,
+                                                },
                                             },
-                                            then: {
-                                                type: ExpressionType.LITERAL,
-                                                value: 1
-                                            }
-                                        }
-                                    ],
-                                    else: {
-                                        type: ExpressionType.LITERAL,
-                                        value: 0
-                                    }
-                                }
-                            }]
-                        }
+                                        ],
+                                        'else': {
+                                            type: ExpressionType.LITERAL,
+                                            value: 0,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
                     },
                     right: {
                         type: ExpressionType.LITERAL,
-                        value: 5
-                    }
+                        value: 5,
+                    },
                 },
                 // Complex condition checking ratio of nulls to total
                 {
@@ -1083,60 +1114,63 @@ const complexHavingQuery: KSQLStatement = {
                                 type: ExpressionType.TRANSFORMATION,
                                 value: {
                                     type: TransformType.AGGREGATE,
-                                    function: AggregateFunction.COUNT,
-                                    parameters: [{
-                                        type: ExpressionType.TRANSFORMATION,
-                                        value: {
-                                            type: TransformType.CASE,
-                                            conditions: [
-                                                {
-                                                    when: {
-                                                        type: ExpressionType.TRANSFORMATION,
-                                                        value: {
-                                                            type: TransformType.COMPARISON,
-                                                            operator: ComparisonOperator.IS_NULL,
-                                                            expression: {
-                                                                type: ExpressionType.COLUMN,
-                                                                sourceColumn: 'value'
+                                    'function': AggregateFunction.COUNT,
+                                    parameters: [
+                                        {
+                                            type: ExpressionType.TRANSFORMATION,
+                                            value: {
+                                                type: TransformType.CASE,
+                                                conditions: [
+                                                    {
+                                                        when: {
+                                                            type: ExpressionType.TRANSFORMATION,
+                                                            value: {
+                                                                type: TransformType.COMPARISON,
+                                                                operator: ComparisonOperator.IS_NULL,
+                                                                expression: {
+                                                                    type: ExpressionType.COLUMN,
+                                                                    sourceColumn: 'value',
+                                                                },
                                                             },
-                                                        }
+                                                        },
+                                                        then: {
+                                                            type: ExpressionType.LITERAL,
+                                                            value: 1,
+                                                        },
                                                     },
-                                                    then: {
-                                                        type: ExpressionType.LITERAL,
-                                                        value: 1
-                                                    }
-                                                }
-                                            ],
-                                            else: {
-                                                type: ExpressionType.LITERAL,
-                                                value: 0
-                                            }
-                                        }
-                                    }]
-                                }
+                                                ],
+                                                'else': {
+                                                    type: ExpressionType.LITERAL,
+                                                    value: 0,
+                                                },
+                                            },
+                                        },
+                                    ],
+                                },
                             },
                             right: {
                                 type: ExpressionType.TRANSFORMATION,
                                 value: {
                                     type: TransformType.AGGREGATE,
-                                    function: AggregateFunction.COUNT,
-                                    parameters: []
-                                }
-                            }
-                        }
+                                    'function': AggregateFunction.COUNT,
+                                    parameters: [],
+                                },
+                            },
+                        },
                     },
                     right: {
                         type: ExpressionType.LITERAL,
-                        value: 0.1
-                    }
-                }
-            ]
-        }
+                        value: 0.1,
+                    },
+                },
+            ],
+        },
     },
-    emit: EmitType.CHANGES
+    emit: EmitType.CHANGES,
 };
 
 const query4 = builder.build(complexHavingQuery);
+
 console.log(query4);
 
 const data = ksqlStatementSchema.safeParse(complexQuery);

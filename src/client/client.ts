@@ -1,22 +1,23 @@
+import { z } from 'zod';
+
 import { KSQLStatementBuilder } from '../builders';
 import { ksqlStatementSchema } from '../schemas';
 import { KSQLStatement } from '../types';
-
-import { z } from 'zod';
 import {
     queryValidationSchema,
     ksqlDBCommandResponseArraySchema,
     queryMetricsSchema,
-    serverInfoSchema, healthCheckSchema,
+    serverInfoSchema,
+    healthCheckSchema,
 } from './schemas';
 import { KsqlDBConfig, StreamsProperties, KsqlDBRequestConfig } from './types';
 
 export class KsqlDBError extends Error {
-    constructor(
+    constructor (
         public readonly errorCode: number,
         public readonly message: string,
         public readonly statementText: string,
-        public readonly entities?: { name: string; type: string; topic?: string; queryId?: string; }[]
+        public readonly entities?: { name: string, type: string, topic?: string, queryId?: string }[],
     ) {
         super(message);
         this.name = 'KsqlDBError';
@@ -24,7 +25,7 @@ export class KsqlDBError extends Error {
 }
 
 export class ValidationError extends Error {
-    constructor(message: string) {
+    constructor (message: string) {
         super(message);
         this.name = 'ValidationError';
     }
@@ -32,38 +33,32 @@ export class ValidationError extends Error {
 
 export class KsqlDBClient {
     private readonly builder = new KSQLStatementBuilder();
-    private readonly auth?: { username: string; password: string };
+
+    private readonly auth?: { username: string, password: string };
+
     private readonly defaultStreamProperties: StreamsProperties;
+
     private readonly baseUrl: string;
 
-    constructor(config: KsqlDBConfig) {
-        const { host, port, protocol = 'http', auth, defaultStreamProperties = {} } = config;
-        this.baseUrl = `${protocol}://${host}:${port}`;
+    constructor (config: KsqlDBConfig) {
+        const {
+            host,
+            port,
+            protocol = 'http',
+            auth,
+            defaultStreamProperties = {},
+        } = config;
+
         this.auth = auth;
+        this.baseUrl = `${protocol}://${host}:${port}`;
         this.defaultStreamProperties = defaultStreamProperties;
-    }
-
-    /**
-     * Validates a KSQL query
-     * @param query The KSQL query to validate
-     */
-    async validateQuery(query: string) {
-        const response = await this.makeRequest(
-            '/ksql/validate',
-            { ksql: query },
-            queryValidationSchema
-        );
-
-        if (!response.valid) {
-            throw new ValidationError(response.message || 'Invalid KSQL query');
-        }
     }
 
     /**
      * Creates a new KSQL stream
      * @param query The KSQL query to create the stream
      */
-    async createStream(query: string) {
+    async createStream (query: string) {
         const response = await this.makeRequest(
             '/ksql',
             {
@@ -71,20 +66,22 @@ export class KsqlDBClient {
                 streamsProperties: {
                     ...this.defaultStreamProperties,
                     'ksql.streams.auto.offset.reset': 'earliest',
-                    'ksql.query.pull.table.scan.enabled': 'true'
-                }
+                    'ksql.query.pull.table.scan.enabled': 'true',
+                },
             },
-            ksqlDBCommandResponseArraySchema
+            ksqlDBCommandResponseArraySchema,
         );
 
         const commandResponse = response[0];
+
         if (!commandResponse || commandResponse.commandStatus.status !== 'SUCCESS') {
             throw new Error(
-                commandResponse?.commandStatus.message || 'Failed to create KSQL stream'
+                commandResponse?.commandStatus.message || 'Failed to create KSQL stream',
             );
         }
 
         const queryId = commandResponse.commandStatus.queryId;
+
         if (!queryId) {
             throw new Error('Stream created but no query ID returned');
         }
@@ -97,8 +94,9 @@ export class KsqlDBClient {
      * @param pipelineId The ID of the pipeline to update
      * @param query The new KSQL query
      */
-    async updateStream(pipelineId: string, query: string) {
+    async updateStream (pipelineId: string, query: string) {
         await this.terminateStream(pipelineId);
+
         return this.createStream(query);
     }
 
@@ -106,20 +104,21 @@ export class KsqlDBClient {
      * Pauses a KSQL stream
      * @param queryId The ID of the stream to pause
      */
-    async pauseStream(queryId: string) {
+    async pauseStream (queryId: string) {
         const response = await this.makeRequest(
             '/ksql',
             {
-                ksql: `PAUSE ${queryId};`
+                ksql: `PAUSE ${queryId};`,
             },
-            ksqlDBCommandResponseArraySchema
+            ksqlDBCommandResponseArraySchema,
         );
 
         const commandResponse = response[0];
+
         if (!commandResponse || commandResponse.commandStatus.status !== 'SUCCESS') {
             throw new Error(
                 commandResponse?.commandStatus.message ||
-                `Failed to pause stream with queryId: ${queryId}`
+                `Failed to pause stream with queryId: ${queryId}`,
             );
         }
     }
@@ -128,20 +127,21 @@ export class KsqlDBClient {
      * Resumes a KSQL stream
      * @param queryId The ID of the stream to resume
      */
-    async resumeStream(queryId: string) {
+    async resumeStream (queryId: string) {
         const response = await this.makeRequest(
             '/ksql',
             {
-                ksql: `RESUME ${queryId};`
+                ksql: `RESUME ${queryId};`,
             },
-            ksqlDBCommandResponseArraySchema
+            ksqlDBCommandResponseArraySchema,
         );
 
         const commandResponse = response[0];
+
         if (!commandResponse || commandResponse.commandStatus.status !== 'SUCCESS') {
             throw new Error(
                 commandResponse?.commandStatus.message ||
-                `Failed to resume stream with queryId: ${queryId}`
+                `Failed to resume stream with queryId: ${queryId}`,
             );
         }
     }
@@ -150,11 +150,11 @@ export class KsqlDBClient {
      * Gets stream metrics
      * @param queryId The ID of the stream to get metrics for
      */
-    async getStreamMetrics(queryId: string) {
+    getStreamMetrics (queryId: string) {
         return this.makeRequest(
             `/queries/${queryId}/status`,
             {},
-            queryMetricsSchema
+            queryMetricsSchema,
         );
     }
 
@@ -162,18 +162,19 @@ export class KsqlDBClient {
      * Terminates a KSQL stream
      * @param queryId The ID of the stream to terminate
      */
-    async terminateStream(queryId: string) {
+    async terminateStream (queryId: string) {
         const response = await this.makeRequest(
             '/ksql/terminate',
             { queryId },
-            ksqlDBCommandResponseArraySchema
+            ksqlDBCommandResponseArraySchema,
         );
 
         const commandResponse = response[0];
+
         if (!commandResponse || commandResponse.commandStatus.status !== 'SUCCESS') {
             throw new Error(
                 commandResponse?.commandStatus.message ||
-                `Failed to terminate stream with queryId: ${queryId}`
+                `Failed to terminate stream with queryId: ${queryId}`,
             );
         }
     }
@@ -184,21 +185,21 @@ export class KsqlDBClient {
      * @param statement The KSQL statement to
      * @param config Optional request configuration
      */
-    async executeStatement(statement: KSQLStatement, config?: KsqlDBRequestConfig) {
+    executeStatement (statement: KSQLStatement, config?: KsqlDBRequestConfig) {
         const endpoint = '/ksql';
         const payload = {
             ksql: this.getQueryString(statement),
             streamsProperties: {
                 ...this.defaultStreamProperties,
-                ...config?.streamsProperties
+                ...config?.streamsProperties,
             },
-            commandSequenceNumber: config?.commandSequenceNumber
+            commandSequenceNumber: config?.commandSequenceNumber,
         };
 
         return this.makeRequest(
             endpoint,
             payload,
-            ksqlDBCommandResponseArraySchema
+            ksqlDBCommandResponseArraySchema,
         );
     }
 
@@ -207,44 +208,69 @@ export class KsqlDBClient {
      * @param statements The KSQL statements to execute
      * @param config Optional request configuration
      */
-    async executeStatements(statements: KSQLStatement[], config?: KsqlDBRequestConfig) {
+    executeStatements (statements: KSQLStatement[], config?: KsqlDBRequestConfig) {
         const payload = {
-            ksql: statements.map(stmt => this.getQueryString(stmt)).join(';'),
+            ksql: statements.map((stmt) => this.getQueryString(stmt))
+                .join(';'),
             streamsProperties: {
                 ...this.defaultStreamProperties,
-                ...config?.streamsProperties
+                ...config?.streamsProperties,
             },
-            commandSequenceNumber: config?.commandSequenceNumber
+            commandSequenceNumber: config?.commandSequenceNumber,
         };
 
         return this.makeRequest(
             '/ksql',
             payload,
-            ksqlDBCommandResponseArraySchema
+            ksqlDBCommandResponseArraySchema,
         );
     }
 
     /**
      * Gets the server status and version
      */
-    async getServerInfo() {
+    getServerInfo () {
         return this.makeRequest('/info', {}, serverInfoSchema);
     }
 
     /**
      * Checks server health
      */
-    async healthCheck(): Promise<boolean> {
+    async healthCheck (): Promise<boolean> {
         try {
             await this.makeRequest('/healthcheck', {}, healthCheckSchema);
+
             return true;
         } catch (error) {
             return false;
         }
     }
 
-    private getQueryString(statement: KSQLStatement): string {
+    /**
+     * Validates a KSQL statement structure and syntax
+     * @param statement The KSQL statement to validate
+     */
+    async validateStatement (statement: KSQLStatement) {
+        const query = this.getQueryString(statement);
+
+        await this.validateQuery(query);
+    }
+
+    private async validateQuery (query: string) {
+        const response = await this.makeRequest(
+            '/ksql/validate',
+            { ksql: query },
+            queryValidationSchema,
+        );
+
+        if (!response.valid) {
+            throw new ValidationError(response.message || 'Invalid KSQL query');
+        }
+    }
+
+    private getQueryString (statement: KSQLStatement): string {
         const parsed = ksqlStatementSchema.safeParse(statement);
+
         if (!parsed.success) {
             throw new ValidationError(parsed.error.message);
         }
@@ -256,33 +282,36 @@ export class KsqlDBClient {
         return this.builder.build(parsed.data);
     }
 
-    private async makeRequest<T>(endpoint: string, payload: unknown, schema: z.ZodType<T>): Promise<T> {
+    private async makeRequest<T> (endpoint: string, payload: unknown, schema: z.ZodType<T>): Promise<T> {
         const headers: HeadersInit = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         };
 
         if (this.auth) {
             const authString = Buffer.from(
-                `${this.auth.username}:${this.auth.password}`
-            ).toString('base64');
+                `${this.auth.username}:${this.auth.password}`,
+            )
+                .toString('base64');
+
             headers['Authorization'] = `Basic ${authString}`;
         }
 
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
             method: 'POST',
             headers,
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
 
         const responseData = await response.json();
 
         if (!response.ok) {
             const error = responseData as KsqlDBError;
+
             throw new KsqlDBError(
                 error.errorCode,
                 error.message,
                 error.statementText,
-                error.entities
+                error.entities,
             );
         }
 
