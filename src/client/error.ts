@@ -5,7 +5,7 @@ interface ZodErrorWithPath {
     message: string;
 }
 
-export function extractZodErrorsWithPaths(error: ZodError): ZodErrorWithPath[] {
+export function extractZodErrorsWithPaths (error: ZodError): ZodErrorWithPath[] {
     const errorsWithPath: ZodErrorWithPath[] = [];
 
     error.errors.forEach((err) => {
@@ -14,7 +14,9 @@ export function extractZodErrorsWithPaths(error: ZodError): ZodErrorWithPath[] {
 
         if (err.code === 'invalid_union') {
             const unionErrors = err.unionErrors.flatMap(extractZodErrorsWithPaths);
+
             errorsWithPath.push(...unionErrors);
+
             return;
         }
 

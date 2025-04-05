@@ -3,7 +3,7 @@ import { SQLBuilder } from './base';
 import { TransformationBuilder } from './transformationBuilder';
 
 export class ExpressionBuilder implements SQLBuilder<Expression> {
-    validate(expr: Expression | NonAggregateExpression): string | null {
+    validate (expr: Expression | NonAggregateExpression): string | null {
         switch (expr.type) {
             case ExpressionType.LITERAL:
                 return this.validateLiteral(expr);
@@ -12,12 +12,13 @@ export class ExpressionBuilder implements SQLBuilder<Expression> {
             case ExpressionType.TRANSFORMATION:
                 return new TransformationBuilder().validate(expr.value);
             default:
-                return 'Invalid expression type';
+                return `Invalid expression type: ${(expr as any).type}, expected LITERAL, COLUMN, or TRANSFORMATION at ${JSON.stringify(expr)}`;
         }
     }
 
-    build(expr: Expression | NonAggregateExpression): string {
+    build (expr: Expression | NonAggregateExpression): string {
         const validation = this.validate(expr);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -30,21 +31,26 @@ export class ExpressionBuilder implements SQLBuilder<Expression> {
             case ExpressionType.TRANSFORMATION:
                 return new TransformationBuilder().build(expr.value);
             default:
-                throw new Error(`Unknown expression type`);
+                throw new Error(`Unknown expression type: ${(expr as any).type} at ${JSON.stringify(expr)}`);
         }
     }
 
-    private buildLiteral(expr: LiteralExpression): string {
-        if (expr.value === null) return 'NULL';
-        if (typeof expr.value === 'string') return `'${expr.value}'`;
+    private buildLiteral (expr: LiteralExpression): string {
+        if (expr.value === null) {
+            return 'NULL';
+        }
+        if (typeof expr.value === 'string') {
+            return `'${expr.value}'`;
+        }
+
         return String(expr.value);
     }
 
-    private buildColumn(expr: ColumnExpression): string {
+    private buildColumn (expr: ColumnExpression): string {
         return expr.sourceColumn;
     }
 
-    private validateLiteral(expr: LiteralExpression): string | null {
-        return expr.value === null || ['string', 'number', 'boolean'].includes(typeof expr.value) ? null : 'Invalid literal value';
+    private validateLiteral (expr: LiteralExpression): string | null {
+        return expr.value === null || ['string', 'number', 'boolean'].includes(typeof expr.value) ? null : `Invalid literal value: ${expr.value} at ${JSON.stringify(expr)}`;
     }
 }

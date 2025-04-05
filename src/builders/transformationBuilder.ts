@@ -1,5 +1,3 @@
-import {  } from '../types/expressions';
-import { SQLBuilder } from './base';
 import {
     Expression,
     Transformation,
@@ -22,14 +20,16 @@ import {
     WindowBoundaryTransformation,
     MultiComparisonTransformation,
     BetweenComparisonTransformation,
-    NullComparisonTransformation, ComparisonOperator,
+    NullComparisonTransformation,
+    ComparisonOperator,
 } from '../types';
-import { ExpressionBuilder } from './expressionBuilder';
+import { SQLBuilder } from './base';
 import { CastBuilder } from './castBuilder';
+import { ExpressionBuilder } from './expressionBuilder';
 import { WindowSpecBuilder, WindowReferenceBuilder } from './windowSpecBuilder';
 
 export class TransformationBuilder implements SQLBuilder<Transformation> {
-    validate(transform: Transformation): string | null {
+    validate (transform: Transformation): string | null {
         switch (transform.type) {
             case TransformType.STRING:
                 return this.validateStringTransformation(transform);
@@ -64,12 +64,13 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
             case TransformType.WINDOW_BOUNDARY:
                 return this.validateWindowBoundaryTransformation(transform);
             default:
-                return 'Unknown transformation type';
+                return `Invalid transformation type: ${(transform as any).type}, expected one of ${Object.values(TransformType).join(', ')} at ${JSON.stringify(transform)}`;
         }
     }
 
-    build(transform: Transformation): string {
+    build (transform: Transformation): string {
         const validation = this.validate(transform);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -126,7 +127,7 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
                 sql = this.buildWindowBoundaryTransformation(transform);
                 break;
             default:
-                throw new Error(`Unknown transformation type`);
+                throw new Error(`Unknown transformation type: ${(transform as any).type} at ${JSON.stringify(transform)}`);
         }
 
         if (transform.alias) {
@@ -136,101 +137,104 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
         return sql;
     }
 
-    private validateFunctionParameters(parameters: Expression[]): string | null {
-        const invalidParams = parameters.map(param => new ExpressionBuilder().validate(param)).filter(data => data !== null);
+    private validateFunctionParameters (parameters: Expression[]): string | null {
+        const invalidParams = parameters.map((param) => new ExpressionBuilder().validate(param)).filter((data) => data !== null);
+
         return invalidParams.length > 0 ? invalidParams.join(', ') : null;
     }
 
-    private buildFunctionParameters(parameters: Expression[]): string {
+    private buildFunctionParameters (parameters: Expression[]): string {
         if (parameters.length === 0) {
             return '*';
         }
 
-        return parameters.map(param => new ExpressionBuilder().build(param)).join(', ');
+        return parameters.map((param) => new ExpressionBuilder().build(param)).join(', ');
     }
 
-    private validateStringTransformation(transform: StringTransformation): string | null {
+    private validateStringTransformation (transform: StringTransformation): string | null {
         return this.validateFunctionParameters(transform.parameters);
     }
 
-    private buildStringTransformation(transform: StringTransformation): string {
+    private buildStringTransformation (transform: StringTransformation): string {
         return `${transform.function}(${this.buildFunctionParameters(transform.parameters)})`;
     }
 
-    private validateNumericTransformation(transform: NumericTransformation): string | null {
+    private validateNumericTransformation (transform: NumericTransformation): string | null {
         return this.validateFunctionParameters(transform.parameters);
     }
 
-    private buildNumericTransformation(transform: NumericTransformation): string {
+    private buildNumericTransformation (transform: NumericTransformation): string {
         return `${transform.function}(${this.buildFunctionParameters(transform.parameters)})`;
     }
 
-    private validateDateTransformation(transform: DateTransformation): string | null {
+    private validateDateTransformation (transform: DateTransformation): string | null {
         return this.validateFunctionParameters(transform.parameters);
     }
 
-    private buildDateTransformation(transform: DateTransformation): string {
+    private buildDateTransformation (transform: DateTransformation): string {
         return `${transform.function}(${this.buildFunctionParameters(transform.parameters)})`;
     }
 
-    private validateCastTransformation(transform: CastTransformation): string | null {
+    private validateCastTransformation (transform: CastTransformation): string | null {
         return new CastBuilder().validate(transform.targetType) &&
             new ExpressionBuilder().validate(transform.sourceExpression);
     }
 
-    private buildCastTransformation(transform: CastTransformation): string {
+    private buildCastTransformation (transform: CastTransformation): string {
         return `CAST(${new ExpressionBuilder().build(transform.sourceExpression)} AS ${new CastBuilder().build(transform.targetType)})`;
     }
 
-    private validateArithmeticTransformation(transform: ArithmeticTransformation): string | null {
+    private validateArithmeticTransformation (transform: ArithmeticTransformation): string | null {
         return new ExpressionBuilder().validate(transform.left) &&
             new ExpressionBuilder().validate(transform.right);
     }
 
-    private buildArithmeticTransformation(transform: ArithmeticTransformation): string {
+    private buildArithmeticTransformation (transform: ArithmeticTransformation): string {
         return `(${new ExpressionBuilder().build(transform.left)} ${transform.operator} ${new ExpressionBuilder().build(transform.right)})`;
     }
 
-    private validateBaseComparisonTransformation(transform: ComparisonTransformation): string | null {
+    private validateBaseComparisonTransformation (transform: ComparisonTransformation): string | null {
         return new ExpressionBuilder().validate(transform.left) || new ExpressionBuilder().validate(transform.right);
     }
 
-    private buildBaseComparisonTransformation(transform: ComparisonTransformation): string {
+    private buildBaseComparisonTransformation (transform: ComparisonTransformation): string {
         return `${new ExpressionBuilder().build(transform.left)} ${transform.operator} ${new ExpressionBuilder().build(transform.right)}`;
     }
 
-    private validateMultiComparisonTransformation(transform: MultiComparisonTransformation): string | null {
-        const otherValidations = transform.right.map(expr => new ExpressionBuilder().validate(expr))
-            .filter(data => data !== null);
+    private validateMultiComparisonTransformation (transform: MultiComparisonTransformation): string | null {
+        const otherValidations = transform.right.map((expr) => new ExpressionBuilder().validate(expr))
+            .filter((data) => data !== null);
 
         const rightValidation = otherValidations.length > 0 ? otherValidations.join(', ') : null;
+
+
         return new ExpressionBuilder().validate(transform.left) || rightValidation;
     }
 
-    private buildMultiComparisonTransformation(transform: MultiComparisonTransformation): string {
-        return `${new ExpressionBuilder().build(transform.left)} ${transform.operator} (${transform.right.map(expr => new ExpressionBuilder().build(expr)).join(', ')})`;
+    private buildMultiComparisonTransformation (transform: MultiComparisonTransformation): string {
+        return `${new ExpressionBuilder().build(transform.left)} ${transform.operator} (${transform.right.map((expr) => new ExpressionBuilder().build(expr)).join(', ')})`;
     }
 
-    private validateBetweenComparisonTransformation(transform: BetweenComparisonTransformation): string | null {
+    private validateBetweenComparisonTransformation (transform: BetweenComparisonTransformation): string | null {
         return new ExpressionBuilder().validate(transform.left) &&
             new ExpressionBuilder().validate(transform.start) &&
             new ExpressionBuilder().validate(transform.end);
     }
 
-    private buildBetweenComparisonTransformation(transform: BetweenComparisonTransformation): string {
+    private buildBetweenComparisonTransformation (transform: BetweenComparisonTransformation): string {
         return `${new ExpressionBuilder().build(transform.left)} ${transform.operator} ${new ExpressionBuilder().build(transform.start)} AND ${new ExpressionBuilder().build(transform.end)}`;
     }
 
-    private validateNullComparisonTransformation(transform: NullComparisonTransformation): string | null {
+    private validateNullComparisonTransformation (transform: NullComparisonTransformation): string | null {
         return new ExpressionBuilder().validate(transform.expression);
     }
 
-    private buildNullComparisonTransformation(transform: NullComparisonTransformation): string {
+    private buildNullComparisonTransformation (transform: NullComparisonTransformation): string {
         return `${new ExpressionBuilder().build(transform.expression)} ${transform.operator}`;
     }
 
-    private validateComparisonTransformation(
-        transform: ComparisonTransformation | MultiComparisonTransformation | BetweenComparisonTransformation | NullComparisonTransformation
+    private validateComparisonTransformation (
+        transform: ComparisonTransformation | MultiComparisonTransformation | BetweenComparisonTransformation | NullComparisonTransformation,
     ): string | null {
         switch (transform.operator) {
             case ComparisonOperator.IS_NULL:
@@ -247,8 +251,8 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
         }
     }
 
-    private buildComparisonTransformation(
-        transform: ComparisonTransformation | MultiComparisonTransformation | BetweenComparisonTransformation | NullComparisonTransformation
+    private buildComparisonTransformation (
+        transform: ComparisonTransformation | MultiComparisonTransformation | BetweenComparisonTransformation | NullComparisonTransformation,
     ): string {
         switch (transform.operator) {
             case ComparisonOperator.IS_NULL:
@@ -265,53 +269,62 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
         }
     }
 
-    private validateLogicalTransformation(transform: LogicalTransformation): string | null {
-        return transform.expressions.every(expr => new ExpressionBuilder().validate(expr)) &&
-            transform.expressions.length > 1 ? null : 'Invalid logical transformation';
+    private validateLogicalTransformation (transform: LogicalTransformation): string | null {
+        const exprValidations = transform.expressions.map((expr) => new ExpressionBuilder().validate(expr))
+            .filter((data) => data !== null);
+
+        return exprValidations.length > 0 ? exprValidations.join(', ') : null;
     }
 
-    private buildLogicalTransformation(transform: LogicalTransformation): string {
-        const exprs = transform.expressions.map(expr => new ExpressionBuilder().build(expr));
+    private buildLogicalTransformation (transform: LogicalTransformation): string {
+        const exprs = transform.expressions.map((expr) => new ExpressionBuilder().build(expr));
+
         return `(${exprs.join(` ${transform.operator} `)})`;
     }
 
-    private validateCaseTransformation(transform: CaseTransformation): string | null {
-        const whenValidation = transform.conditions.flatMap(cond => {
+    private validateCaseTransformation (transform: CaseTransformation): string | null {
+        const whenValidation = transform.conditions.flatMap((cond) => {
             const when = new ExpressionBuilder().validate(cond.when);
             const then = new ExpressionBuilder().validate(cond.then);
+
+
             return [when, then];
         });
 
         const elseValidation = transform.else ? new ExpressionBuilder().validate(transform.else) : 'Invalid condition, else is required';
 
-        return [...whenValidation, elseValidation].filter(data => data !== null).join(', ');
+        return [...whenValidation, elseValidation].filter((data) => data !== null).join(', ');
     }
 
-    private buildCaseTransformation(transform: CaseTransformation): string {
+    private buildCaseTransformation (transform: CaseTransformation): string {
         let sql = 'CASE';
-        transform.conditions.forEach(cond => {
+
+        transform.conditions.forEach((cond) => {
             sql += ` WHEN ${new ExpressionBuilder().build(cond.when)} THEN ${new ExpressionBuilder().build(cond.then)}`;
         });
         if (transform.else) {
             sql += ` ELSE ${new ExpressionBuilder().build(transform.else)}`;
         }
         sql += ' END';
+
         return sql;
     }
 
-    private validateAggregateTransformation(transform: AggregateTransformation): string | null {
+    private validateAggregateTransformation (transform: AggregateTransformation): string | null {
         if (transform.window) {
             if ('spec' in transform.window) {
                 return new WindowSpecBuilder().validate(transform.window.spec);
-            } else {
-                return new WindowReferenceBuilder().validate(transform.window);
             }
+
+            return new WindowReferenceBuilder().validate(transform.window);
         }
+
         return this.validateFunctionParameters(transform.parameters);
     }
 
-    private buildAggregateTransformation(transform: AggregateTransformation): string {
+    private buildAggregateTransformation (transform: AggregateTransformation): string {
         let sql = `${transform.function}(${this.buildFunctionParameters(transform.parameters)})`;
+
         if (transform.window) {
             if ('spec' in transform.window) {
                 sql += ` WINDOW ${new WindowSpecBuilder().build(transform.window.spec)}`;
@@ -319,22 +332,23 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
                 sql += ` WINDOW ${new WindowReferenceBuilder().build(transform.window)}`;
             }
         }
+
         return sql;
     }
 
-    private validateCollectionTransformation(transform: CollectionTransformation): string | null {
+    private validateCollectionTransformation (transform: CollectionTransformation): string | null {
         return this.validateFunctionParameters(transform.parameters);
     }
 
-    private buildCollectionTransformation(transform: CollectionTransformation): string {
+    private buildCollectionTransformation (transform: CollectionTransformation): string {
         return `${transform.function}(${this.buildFunctionParameters(transform.parameters)})`;
     }
 
-    private validateWindowFunctionTransformation(transform: WindowFunctionTransformation): string | null {
+    private validateWindowFunctionTransformation (transform: WindowFunctionTransformation): string | null {
         if (transform.over && transform.over.partitionBy) {
             const maps = transform.over.partitionBy
-                .map(expr => new ExpressionBuilder().validate(expr))
-                .filter(data => data !== null);
+                .map((expr) => new ExpressionBuilder().validate(expr))
+                .filter((data) => data !== null);
 
             if (maps.length > 0) {
                 return maps.join(', ');
@@ -342,14 +356,15 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
         }
 
         const data = this.validateFunctionParameters(transform.parameters);
+
         if (data) {
             return data;
         }
 
         if (transform.over && transform.over.orderBy) {
             const orders = transform.over.orderBy
-                .map(order => new ExpressionBuilder().validate(order.expression))
-                .filter(data => data !== null);
+                .map((order) => new ExpressionBuilder().validate(order.expression))
+                .filter((data) => data !== null);
 
             if (orders.length > 0) {
                 return orders.join(', ');
@@ -365,26 +380,28 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
         return null;
     }
 
-    private buildWindowFunctionTransformation(transform: WindowFunctionTransformation): string {
+    private buildWindowFunctionTransformation (transform: WindowFunctionTransformation): string {
         let sql = `${transform.function}(${this.buildFunctionParameters(transform.parameters)})`;
         const overClauses: string[] = [];
 
         if (transform.over && transform.over.partitionBy && transform.over.partitionBy.length > 0) {
-            overClauses.push(`PARTITION BY ${transform.over.partitionBy.map(expr =>
-                new ExpressionBuilder().build(expr)).join(', ')}`);
+            overClauses.push(`PARTITION BY ${transform.over.partitionBy.map((expr) => new ExpressionBuilder().build(expr)).join(', ')}`);
         }
 
         if (transform.over && transform.over.orderBy && transform.over.orderBy.length > 0) {
-            const orderBy = transform.over.orderBy.map(order => {
+            const orderBy = transform.over.orderBy.map((order) => {
                 let orderSql = new ExpressionBuilder().build(order.expression);
+
                 if (order.direction) {
                     orderSql += ` ${order.direction}`;
                 }
                 if (order.nulls) {
                     orderSql += ` ${order.nulls}`;
                 }
+
                 return orderSql;
             }).join(', ');
+
             overClauses.push(`ORDER BY ${orderBy}`);
         }
 
@@ -397,49 +414,51 @@ export class TransformationBuilder implements SQLBuilder<Transformation> {
         return sql;
     }
 
-    private validateStructAccessTransformation(transform: StructAccessTransformation): string | null {
+    private validateStructAccessTransformation (transform: StructAccessTransformation): string | null {
         return new ExpressionBuilder().validate(transform.struct);
     }
 
-    private buildStructAccessTransformation(transform: StructAccessTransformation): string {
+    private buildStructAccessTransformation (transform: StructAccessTransformation): string {
         return `${new ExpressionBuilder().build(transform.struct)}->${transform.field}`;
     }
 
-    private validateArrayAccessTransformation(transform: ArrayAccessTransformation): string | null {
+    private validateArrayAccessTransformation (transform: ArrayAccessTransformation): string | null {
         return new ExpressionBuilder().validate(transform.array) &&
             new ExpressionBuilder().validate(transform.index);
     }
 
-    private buildArrayAccessTransformation(transform: ArrayAccessTransformation): string {
+    private buildArrayAccessTransformation (transform: ArrayAccessTransformation): string {
         return `${new ExpressionBuilder().build(transform.array)}[${new ExpressionBuilder().build(transform.index)}]`;
     }
 
-    private validateMapAccessTransformation(transform: MapAccessTransformation): string | null {
+    private validateMapAccessTransformation (transform: MapAccessTransformation): string | null {
         return new ExpressionBuilder().validate(transform.map) &&
             new ExpressionBuilder().validate(transform.key);
     }
 
-    private buildMapAccessTransformation(transform: MapAccessTransformation): string {
+    private buildMapAccessTransformation (transform: MapAccessTransformation): string {
         return `${new ExpressionBuilder().build(transform.map)}[${new ExpressionBuilder().build(transform.key)}]`;
     }
 
-    private validateExtractTransformation(transform: ExtractTransformation): string | null {
+    private validateExtractTransformation (transform: ExtractTransformation): string | null {
         return new ExpressionBuilder().validate(transform.source);
     }
 
-    private buildExtractTransformation(transform: ExtractTransformation): string {
+    private buildExtractTransformation (transform: ExtractTransformation): string {
         return `EXTRACT(${transform.field} FROM ${new ExpressionBuilder().build(transform.source)})`;
     }
 
-    private validateWindowBoundaryTransformation(transform: WindowBoundaryTransformation): string | null {
+    private validateWindowBoundaryTransformation (transform: WindowBoundaryTransformation): string | null {
         return !transform.window || new WindowReferenceBuilder().validate(transform.window) ? null : 'Invalid window reference';
     }
 
-    private buildWindowBoundaryTransformation(transform: WindowBoundaryTransformation): string {
+    private buildWindowBoundaryTransformation (transform: WindowBoundaryTransformation): string {
         let sql: string = transform.boundary;
+
         if (transform.window) {
             sql += ` ${new WindowReferenceBuilder().build(transform.window)}`;
         }
+
         return sql;
     }
 }

@@ -5,44 +5,51 @@ import {
     BaseJoinCondition,
     StreamSourceOptions,
     TableSourceOptions,
-    WindowDuration, DataSourceType, SourceType,
-    StreamJoin, TableJoin, StreamTableJoin,
+    WindowDuration,
+    DataSourceType,
+    SourceType,
+    StreamJoin,
+    TableJoin,
+    StreamTableJoin,
 } from '../types';
 import { SQLBuilder } from './base';
 import { SelectStatementBuilder } from './selectBuilder';
 import { WindowSpecBuilder } from './windowSpecBuilder';
 
 export class FromBuilder implements SQLBuilder<FromClause> {
-    validate(fromClause: FromClause): string | null {
+    validate (fromClause: FromClause): string | null {
         if (!this.validateSource(fromClause.source)) {
-            return 'Invalid from source';
+            return `Invalid source: ${JSON.stringify(fromClause.source)}`;
         }
 
         if (fromClause.sourceOptions) {
             if (fromClause.sourceType === DataSourceType.STREAM) {
                 if (!this.validateStreamSourceOptions(fromClause.sourceOptions as StreamSourceOptions)) {
-                    return 'Invalid stream source options';
+                    return `Invalid stream source options: ${JSON.stringify(fromClause.sourceOptions)}`;
                 }
-            } else {
-                if (!this.validateTableSourceOptions(fromClause.sourceOptions as TableSourceOptions)) {
-                    return 'Invalid table source options';
-                }
+            } else if (!this.validateTableSourceOptions(fromClause.sourceOptions as TableSourceOptions)) {
+                return `Invalid table source options: ${JSON.stringify(fromClause.sourceOptions)}`;
             }
         }
 
         if ('joins' in fromClause && fromClause.joins) {
             if (fromClause.sourceType === DataSourceType.STREAM) {
-                return fromClause.joins.every(join => this.validateStreamJoin(join)) ? null : 'Invalid stream join';
-            } else {
-                return fromClause.joins.every(join => this.validateTableJoin(join)) ? null : 'Invalid table join';
+                const errors = fromClause.joins.map((join) => this.validateStreamJoin(join)).filter((error) => error !== null);
+
+                return errors.length > 0 ? `Invalid stream join: ${errors.join(', ')}` : null;
             }
+
+            const errors = fromClause.joins.map((join) => this.validateTableJoin(join)).filter((error) => error !== null);
+
+            return errors.length > 0 ? `Invalid table join: ${errors.join(', ')}` : null;
         }
 
         return null;
     }
 
-    build(fromClause: FromClause): string {
+    build (fromClause: FromClause): string {
         const validation = this.validate(fromClause);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -56,13 +63,13 @@ export class FromBuilder implements SQLBuilder<FromClause> {
         }
 
         if ('joins' in fromClause && fromClause.joins) {
-            sql += ' ' + fromClause.joins.map(join => this.buildJoin(join)).join(' ');
+            sql += ` ${fromClause.joins.map((join) => this.buildJoin(join)).join(' ')}`;
         }
 
         return sql;
     }
 
-    private validateSource(source: Source): boolean {
+    private validateSource (source: Source): boolean {
         switch (source.type) {
             case SourceType.DIRECT:
                 return this.validateDirectSource(source);
@@ -73,93 +80,96 @@ export class FromBuilder implements SQLBuilder<FromClause> {
         }
     }
 
-    private validateDirectSource(source: Source & { type: SourceType.DIRECT }): boolean {
+    private validateDirectSource (source: Source & { type: SourceType.DIRECT }): boolean {
         return Boolean(
             source.name &&
             typeof source.name === 'string' &&
-            /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(source.name)
+            (/^[a-zA-Z_][a-zA-Z0-9_]*$/).test(source.name),
         );
     }
 
-    private validateSubquerySource(source: Source & { type: SourceType.SUBQUERY }): boolean {
+    private validateSubquerySource (source: Source & { type: SourceType.SUBQUERY }): boolean {
         return Boolean(
             source.alias &&
-            /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(source.alias) &&
-            new SelectStatementBuilder().validate(source.query)
+            (/^[a-zA-Z_][a-zA-Z0-9_]*$/).test(source.alias) &&
+            new SelectStatementBuilder().validate(source.query),
         );
     }
 
-    private validateStreamSourceOptions(options: StreamSourceOptions): boolean {
+    private validateStreamSourceOptions (options: StreamSourceOptions): boolean {
         if (options.partitions && (!Number.isInteger(options.partitions) || options.partitions <= 0)) {
             return false;
         }
+
         return !(options.replicas && (!Number.isInteger(options.replicas) || options.replicas <= 0));
     }
 
-    private validateTableSourceOptions(options: TableSourceOptions): boolean {
+    private validateTableSourceOptions (options: TableSourceOptions): boolean {
         if (options.partitions && (!Number.isInteger(options.partitions) || options.partitions <= 0)) {
             return false;
         }
+
         return !(options.replicas && (!Number.isInteger(options.replicas) || options.replicas <= 0));
     }
 
-    private validateStreamJoin(join: StreamJoin | StreamTableJoin): boolean {
+    private validateStreamJoin (join: StreamJoin | StreamTableJoin): string | null {
         if ('window' in join) {
             if (!this.validateStreamJoinWindow(join.window)) {
-                return false;
+                return `Invalid stream join window: ${JSON.stringify(join.window)}`;
             }
         }
 
         return this.validateJoinBase(join);
     }
 
-    private validateTableJoin(join: TableJoin): boolean {
+    private validateTableJoin (join: TableJoin): string | null {
         return this.validateJoinBase(join);
     }
 
-    private validateJoinBase(join: StreamJoin | StreamTableJoin): boolean {
+    private validateJoinBase (join: StreamJoin | StreamTableJoin): string | null {
         if (!join.conditions || !Array.isArray(join.conditions) || join.conditions.length === 0) {
-            return false;
+            return `Invalid join conditions: ${JSON.stringify(join.conditions)}, expected an array of conditions with at least one condition`;
         }
 
-        return join.conditions.every((condition: BaseJoinCondition) =>
-            condition.leftField &&
-            condition.rightField
-        );
+        const check = join.conditions.every((condition: BaseJoinCondition) => condition.leftField && condition.rightField);
+
+        return check ? null : `Invalid join condition: ${JSON.stringify(join.conditions)}, expected an array of conditions with leftField and rightField properties`;
     }
 
-    private validateStreamJoinWindow(window: StreamJoinWindow): boolean {
+    private validateStreamJoinWindow (window: StreamJoinWindow): boolean {
         return Boolean(
             window.before?.value > 0 &&
             window.after?.value > 0 &&
-            (!window.gracePeriod || window.gracePeriod.value > 0)
+            (!window.gracePeriod || window.gracePeriod.value > 0),
         );
     }
 
-    private buildSource(source: Source): string {
+    private buildSource (source: Source): string {
         switch (source.type) {
             case SourceType.DIRECT:
                 return this.buildDirectSource(source);
             case SourceType.SUBQUERY:
                 return this.buildSubquerySource(source);
             default:
-                throw new Error('Invalid source type');
+                throw new Error(`Invalid source type: ${(source as any).type} at ${JSON.stringify(source)}`);
         }
     }
 
-    private buildDirectSource(source: Source & { type: SourceType.DIRECT }): string {
+    private buildDirectSource (source: Source & { type: SourceType.DIRECT }): string {
         let sql = source.name;
+
         if (source.alias) {
             sql += ` AS ${source.alias}`;
         }
+
         return sql;
     }
 
-    private buildSubquerySource(source: Source & { type: SourceType.SUBQUERY }): string {
+    private buildSubquerySource (source: Source & { type: SourceType.SUBQUERY }): string {
         return `(${new SelectStatementBuilder().build(source.query)}) AS ${source.alias}`;
     }
 
-    private buildSourceOptions(options: StreamSourceOptions | TableSourceOptions, sourceType: DataSourceType): string {
+    private buildSourceOptions (options: StreamSourceOptions | TableSourceOptions, sourceType: DataSourceType): string {
         const optionParts: string[] = [];
 
         if ('window' in options && options.window) {
@@ -172,6 +182,7 @@ export class FromBuilder implements SQLBuilder<FromClause> {
 
         if (options.timestamp) {
             let timestampStr = `TIMESTAMP(${options.timestamp.column}`;
+
             if (options.timestamp.format) {
                 timestampStr += `, '${options.timestamp.format}'`;
             }
@@ -182,10 +193,10 @@ export class FromBuilder implements SQLBuilder<FromClause> {
             optionParts.push(timestampStr);
         }
 
-        return optionParts.length > 0 ? ' ' + optionParts.join(' ') : '';
+        return optionParts.length > 0 ? ` ${optionParts.join(' ')}` : '';
     }
 
-    private buildJoin(join: StreamJoin | TableJoin | StreamTableJoin): string {
+    private buildJoin (join: StreamJoin | TableJoin | StreamTableJoin): string {
         let sql = `${join.type} JOIN ${join.source.name}`;
 
         if (join.source.alias) {
@@ -196,14 +207,12 @@ export class FromBuilder implements SQLBuilder<FromClause> {
             sql += ` WITHIN ${this.buildStreamJoinWindow(join.window)}`;
         }
 
-        sql += ' ON ' + join.conditions.map((condition: BaseJoinCondition) =>
-            `${condition.leftField} = ${condition.rightField}`
-        ).join(' AND ');
+        sql += ` ON ${join.conditions.map((condition: BaseJoinCondition) => `${condition.leftField} = ${condition.rightField}`).join(' AND ')}`;
 
         return sql;
     }
 
-    private buildStreamJoinWindow(window: StreamJoinWindow): string {
+    private buildStreamJoinWindow (window: StreamJoinWindow): string {
         let sql = `(${this.buildWindowDuration(window.before)} BEFORE`;
 
         if (window.after) {
@@ -215,10 +224,11 @@ export class FromBuilder implements SQLBuilder<FromClause> {
         }
 
         sql += ')';
+
         return sql;
     }
 
-    private buildWindowDuration(duration: WindowDuration): string {
+    private buildWindowDuration (duration: WindowDuration): string {
         return `${duration.value} ${duration.unit}`;
     }
 }

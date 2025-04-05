@@ -9,15 +9,15 @@ import {
     WindowReference,
     WindowDefinition,
     ComparisonOperator,
-    HavingConditionType
+    HavingConditionType,
 } from '../types';
-import { ExpressionBuilder } from './expressionBuilder';
 import { SQLBuilder } from './base';
+import { ExpressionBuilder } from './expressionBuilder';
 import { PartitionBuilder } from './partitionsBuilder';
 import { WindowReferenceBuilder, WindowSpecBuilder } from './windowSpecBuilder';
 
 export class HavingBuilder implements SQLBuilder<HavingCondition> {
-    validate(condition: HavingCondition): string | null {
+    validate (condition: HavingCondition): string | null {
         switch (condition.type) {
             case HavingConditionType.AGGREGATE:
                 return this.validateAggregate(condition);
@@ -26,12 +26,13 @@ export class HavingBuilder implements SQLBuilder<HavingCondition> {
             case HavingConditionType.LOGICAL:
                 return this.validateLogical(condition);
             default:
-                return null;
+                return `Invalid having condition type: ${(condition as any).type}, expected AGGREGATE, COMPARISON, or LOGICAL at ${JSON.stringify(condition)}`;
         }
     }
 
-    build(condition: HavingCondition): string {
+    build (condition: HavingCondition): string {
         const validation = this.validate(condition);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -44,11 +45,11 @@ export class HavingBuilder implements SQLBuilder<HavingCondition> {
             case HavingConditionType.LOGICAL:
                 return this.buildLogical(condition);
             default:
-                throw new Error(`Unknown having condition type`);
+                throw new Error(`Unknown having condition type at ${JSON.stringify(condition)}`);
         }
     }
 
-    private validateAggregate(condition: InHavingAggregateCondition | BetweenHavingAggregateCondition | OtherHavingAggregateCondition): string | null {
+    private validateAggregate (condition: InHavingAggregateCondition | BetweenHavingAggregateCondition | OtherHavingAggregateCondition): string | null {
         switch (condition.operator) {
             case ComparisonOperator.IN:
             case ComparisonOperator.NOT_IN:
@@ -61,7 +62,7 @@ export class HavingBuilder implements SQLBuilder<HavingCondition> {
         }
     }
 
-    private buildAggregate(condition: InHavingAggregateCondition | BetweenHavingAggregateCondition | OtherHavingAggregateCondition): string {
+    private buildAggregate (condition: InHavingAggregateCondition | BetweenHavingAggregateCondition | OtherHavingAggregateCondition): string {
         switch (condition.operator) {
             case ComparisonOperator.IN:
             case ComparisonOperator.NOT_IN:
@@ -74,70 +75,77 @@ export class HavingBuilder implements SQLBuilder<HavingCondition> {
         }
     }
 
-    private buildInAggregate(condition: InHavingAggregateCondition): string {
+    private buildInAggregate (condition: InHavingAggregateCondition): string {
         const expressionBuilder = new ExpressionBuilder();
-        const func = `${condition.function}(${condition.parameters.map(p =>
-            expressionBuilder.build(p)).join(', ')})`;
-        const values = condition.right.map(r =>
-            expressionBuilder.build(r)).join(', ');
+        const func = `${condition.function}(${condition.parameters.map((p) => expressionBuilder.build(p)).join(', ')})`;
+        const values = condition.right.map((r) => expressionBuilder.build(r)).join(', ');
+
         return `${func} ${condition.operator} (${values})`;
     }
 
-    private buildBetweenAggregate(condition: BetweenHavingAggregateCondition): string {
+    private buildBetweenAggregate (condition: BetweenHavingAggregateCondition): string {
         const expressionBuilder = new ExpressionBuilder();
-        const func = `${condition.function}(${condition.parameters.map(p =>
-            expressionBuilder.build(p)).join(', ')})`;
+        const func = `${condition.function}(${condition.parameters.map((p) => expressionBuilder.build(p)).join(', ')})`;
         const start = expressionBuilder.build(condition.right.start);
         const end = expressionBuilder.build(condition.right.end);
+
         return `${func} ${condition.operator} ${start} AND ${end}`;
     }
 
-    private buildOtherAggregate(condition: OtherHavingAggregateCondition): string {
+    private buildOtherAggregate (condition: OtherHavingAggregateCondition): string {
         const expressionBuilder = new ExpressionBuilder();
-        const parameters = condition.parameters.length ? condition.parameters.map(p => expressionBuilder.build(p)).join(', ') : '*';
+        const parameters = condition.parameters.length ? condition.parameters.map((p) => expressionBuilder.build(p)).join(', ') : '*';
         const right = expressionBuilder.build(condition.right);
+
         return `${condition.function}(${parameters}) ${condition.operator} ${right}`;
     }
 
-    private buildComparison(condition: HavingComparisonCondition): string {
+    private buildComparison (condition: HavingComparisonCondition): string {
         const left = new ExpressionBuilder().build(condition.left);
         const right = new ExpressionBuilder().build(condition.right);
+
         return `${left} ${condition.operator} ${right}`;
     }
 
-    private buildLogical(condition: HavingLogicalCondition): string {
-        const conditions = condition.conditions.map(c => this.build(c)).join(` ${condition.operator} `);
+    private buildLogical (condition: HavingLogicalCondition): string {
+        const conditions = condition.conditions.map((c) => this.build(c)).join(` ${condition.operator} `);
+
         return `(${conditions})`;
     }
 
-    private validateInAggregate(condition: InHavingAggregateCondition): string | null {
-        return condition.parameters.every(p => new ExpressionBuilder().validate(p)) &&
-               condition.right.every(r => new ExpressionBuilder().validate(r)) ? null : 'Invalid in condition';
+    private validateInAggregate (condition: InHavingAggregateCondition): string | null {
+        return condition.parameters.every((p) => new ExpressionBuilder().validate(p)) &&
+               condition.right.every((r) => new ExpressionBuilder().validate(r))
+            ? null
+            : `Invalid in condition: ${condition.operator}`;
     }
 
-    private validateBetweenAggregate(condition: BetweenHavingAggregateCondition): string | null {
-        return condition.parameters.every(p => new ExpressionBuilder().validate(p)) &&
+    private validateBetweenAggregate (condition: BetweenHavingAggregateCondition): string | null {
+        return condition.parameters.every((p) => new ExpressionBuilder().validate(p)) &&
                new ExpressionBuilder().validate(condition.right.start) &&
-               new ExpressionBuilder().validate(condition.right.end) ? null : 'Invalid between condition';
+               new ExpressionBuilder().validate(condition.right.end)
+            ? null
+            : `Invalid between condition: ${condition.operator}`;
     }
 
-    private validateOtherAggregate(condition: OtherHavingAggregateCondition): string | null {
+    private validateOtherAggregate (condition: OtherHavingAggregateCondition): string | null {
         const validParams = condition.parameters
-            .map(p => new ExpressionBuilder().validate(p))
+            .map((p) => new ExpressionBuilder().validate(p));
 
         const validRight = new ExpressionBuilder().validate(condition.right);
-        const valid = [...validParams, validRight].filter(v => v !== null);
+        const valid = [...validParams, validRight].filter((v) => v !== null);
 
-        return valid.length === 0 ? null : valid.join(', ');
+        return valid.length === 0 ? null : `Invalid other condition: ${valid.join(', ')}`;
     }
 
-    private validateComparison(condition: HavingComparisonCondition): string | null {
+    private validateComparison (condition: HavingComparisonCondition): string | null {
         const validLeft = new ExpressionBuilder().validate(condition.left);
         const validRight = new ExpressionBuilder().validate(condition.right);
+
         return validLeft ? validLeft : validRight;
     }
 
-    private validateLogical(condition: HavingLogicalCondition): string | null {
+    private validateLogical (condition: HavingLogicalCondition): string | null {
         const valid = condition.conditions
             .map(this.validate.bind(this))
             .filter((x) => x !== null);
@@ -147,21 +155,20 @@ export class HavingBuilder implements SQLBuilder<HavingCondition> {
 }
 
 export class GroupByBuilder implements SQLBuilder<GroupBy> {
-    validate(groupBy: GroupBy): string | null {
+    validate (groupBy: GroupBy): string | null {
         if (groupBy.columns.length === 0) {
-            return 'Group by columns are required';
+            return `Group by columns are required at ${JSON.stringify(groupBy)}`;
         }
 
-        const results = groupBy.columns.map(col =>
-            new ExpressionBuilder().validate(col.expression)
-        ).filter(validation => validation !== null);
+        const results = groupBy.columns.map((col) => new ExpressionBuilder().validate(col.expression)).filter((validation) => validation !== null);
 
         if (results.length > 0) {
-            return results.join(', ');
+            return `Invalid group by column: ${results.join(', ')}`;
         }
 
         if ('having' in groupBy && groupBy.having) {
             const havingValidation = new HavingBuilder().validate(groupBy.having);
+
             if (havingValidation) {
                 return havingValidation;
             }
@@ -169,6 +176,7 @@ export class GroupByBuilder implements SQLBuilder<GroupBy> {
 
         if ('partitionBy' in groupBy && groupBy.partitionBy) {
             const partitionValidation = new PartitionBuilder().validate(groupBy.partitionBy);
+
             if (partitionValidation) {
                 return partitionValidation;
             }
@@ -187,15 +195,17 @@ export class GroupByBuilder implements SQLBuilder<GroupBy> {
         return null;
     }
 
-    build(groupBy: GroupBy): string {
+    build (groupBy: GroupBy): string {
         const validation = this.validate(groupBy);
+
         if (validation) {
             throw new Error(validation);
         }
 
         const columns = groupBy.columns
-            .map(col => {
+            .map((col) => {
                 const expr = new ExpressionBuilder().build(col.expression);
+
                 return col.alias ? `${expr} AS ${col.alias}` : expr;
             })
             .join(', ');
@@ -223,11 +233,11 @@ export class GroupByBuilder implements SQLBuilder<GroupBy> {
         return sql;
     }
 
-    private isWindowSpec(window: WindowDefinition | WindowReference): window is WindowDefinition {
+    private isWindowSpec (window: WindowDefinition | WindowReference): window is WindowDefinition {
         return 'spec' in window && window.spec !== undefined;
     }
 
-    private isWindowReference(window: WindowDefinition | WindowReference): window is WindowReference {
+    private isWindowReference (window: WindowDefinition | WindowReference): window is WindowReference {
         return 'boundaries' in window && window.boundaries !== undefined;
     }
 }

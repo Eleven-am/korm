@@ -14,7 +14,7 @@ import {
 } from './statementBuilder';
 
 export class KSQLStatementBuilder implements SQLBuilder<KSQLStatement> {
-    validate(statement: KSQLStatement): string | null {
+    validate (statement: KSQLStatement): string | null {
         switch (statement.type) {
             case SelectType.STAR:
             case SelectType.COLUMN:
@@ -38,12 +38,13 @@ export class KSQLStatementBuilder implements SQLBuilder<KSQLStatement> {
             case QueryType.DESCRIBE:
                 return new DescribeStatementBuilder().validate(statement);
             default:
-                return 'Invalid statement type';
+                return `Invalid statement type: ${(statement as any).type}, expected SELECT, INSERT, DROP, CREATE, TERMINATE, PROPERTY, LIST, SHOW, EXPLAIN, or DESCRIBE at ${JSON.stringify(statement)}`;
         }
     }
 
-    build(statement: KSQLStatement): string {
+    build (statement: KSQLStatement): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -71,7 +72,7 @@ export class KSQLStatementBuilder implements SQLBuilder<KSQLStatement> {
             case QueryType.DESCRIBE:
                 return new DescribeStatementBuilder().build(statement);
             default:
-                throw new Error('Invalid statement type');
+                throw new Error(`Unknown statement type: ${(statement as any).type} at ${JSON.stringify(statement)}`);
         }
     }
 }

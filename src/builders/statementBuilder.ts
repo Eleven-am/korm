@@ -11,15 +11,20 @@ import {
     ShowStatement,
     ShowType,
     TerminateQuery,
-    InsertValueQuery, InsertSelectQuery,
-    CreateType, DataSourceType, PropertyAction, QueryType, InsertType
+    InsertValueQuery,
+    InsertSelectQuery,
+    CreateType,
+    DataSourceType,
+    PropertyAction,
+    QueryType,
+    InsertType,
 } from '../types';
 import { SQLBuilder } from './base';
 import { CastBuilder } from './castBuilder';
 import { SelectStatementBuilder } from './selectBuilder';
 
 export class TerminateQueryBuilder implements SQLBuilder<TerminateQuery> {
-    validate(query: TerminateQuery): string | null {
+    validate (query: TerminateQuery): string | null {
         if (query.type !== QueryType.TERMINATE) {
             return 'Invalid query type';
         }
@@ -29,11 +34,13 @@ export class TerminateQueryBuilder implements SQLBuilder<TerminateQuery> {
         }
 
         const queryIdRegex = /^[a-zA-Z0-9_-]+$/;
+
         return queryIdRegex.test(query.queryId) ? null : 'Invalid query ID';
     }
 
-    build(query: TerminateQuery): string {
+    build (query: TerminateQuery): string {
         const validation = this.validate(query);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -43,7 +50,7 @@ export class TerminateQueryBuilder implements SQLBuilder<TerminateQuery> {
 }
 
 export class PropertyStatementBuilder implements SQLBuilder<PropertyStatement> {
-    validate(statement: PropertyStatement): string | null {
+    validate (statement: PropertyStatement): string | null {
         if (statement.type !== QueryType.PROPERTY) {
             return 'Invalid query type';
         }
@@ -61,11 +68,13 @@ export class PropertyStatementBuilder implements SQLBuilder<PropertyStatement> {
         }
 
         const propertyNameRegex = /^[a-zA-Z0-9._-]+$/;
+
         return propertyNameRegex.test(statement.property) ? null : 'Invalid property name';
     }
 
-    build(statement: PropertyStatement): string {
+    build (statement: PropertyStatement): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -73,6 +82,8 @@ export class PropertyStatementBuilder implements SQLBuilder<PropertyStatement> {
         switch (statement.action) {
             case PropertyAction.SET:
                 const formattedValue = this.formatPropertyValue(statement.value!);
+
+
                 return `SET '${statement.property}'=${formattedValue};`;
 
             case PropertyAction.SHOW:
@@ -83,17 +94,19 @@ export class PropertyStatementBuilder implements SQLBuilder<PropertyStatement> {
         }
     }
 
-    private formatPropertyValue(value: string): string {
-        if (/[\s'"`{}()[\],;]/.test(value)) {
-            const escapedValue = value.replace(/'/g, "''");
+    private formatPropertyValue (value: string): string {
+        if ((/[\s'"`{}()[\],;]/).test(value)) {
+            const escapedValue = value.replace(/'/g, '\'\'');
+
             return `'${escapedValue}'`;
         }
+
         return value;
     }
 }
 
 export class ListStatementBuilder implements SQLBuilder<ListStatement> {
-    validate(statement: ListStatement): string | null {
+    validate (statement: ListStatement): string | null {
         if (statement.type !== QueryType.LIST) {
             return 'Invalid query type';
         }
@@ -101,8 +114,9 @@ export class ListStatementBuilder implements SQLBuilder<ListStatement> {
         return [DataSourceType.STREAM, DataSourceType.TABLE].includes(statement.sourceType) ? null : 'Invalid source type';
     }
 
-    build(statement: ListStatement): string {
+    build (statement: ListStatement): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -116,7 +130,7 @@ export class ListStatementBuilder implements SQLBuilder<ListStatement> {
         return `${sql};`;
     }
 
-    private pluralizeSourceType(sourceType: DataSourceType): string {
+    private pluralizeSourceType (sourceType: DataSourceType): string {
         switch (sourceType) {
             case DataSourceType.STREAM:
                 return 'STREAMS';
@@ -129,17 +143,20 @@ export class ListStatementBuilder implements SQLBuilder<ListStatement> {
 }
 
 export class ShowStatementBuilder implements SQLBuilder<ShowStatement> {
-    validate(statement: ShowStatement): string | null {
+    validate (statement: ShowStatement): string | null {
         if (statement.type !== QueryType.SHOW) {
             return 'Invalid query type';
         }
 
         return Object.values(ShowType)
-            .includes(statement.showType) ? null : 'Invalid show type';
+            .includes(statement.showType)
+            ? null
+            : 'Invalid show type';
     }
 
-    build(statement: ShowStatement): string {
+    build (statement: ShowStatement): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -149,7 +166,7 @@ export class ShowStatementBuilder implements SQLBuilder<ShowStatement> {
 }
 
 export class DescribeStatementBuilder implements SQLBuilder<DescribeQuery> {
-    validate(statement: DescribeQuery): string | null {
+    validate (statement: DescribeQuery): string | null {
         if (statement.type !== QueryType.DESCRIBE) {
             return 'Invalid query type';
         }
@@ -163,11 +180,13 @@ export class DescribeStatementBuilder implements SQLBuilder<DescribeQuery> {
         }
 
         const validNameRegex = /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/;
+
         return validNameRegex.test(statement.target.name) ? null : 'Invalid target name';
     }
 
-    build(statement: DescribeQuery): string {
+    build (statement: DescribeQuery): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -182,57 +201,8 @@ export class DescribeStatementBuilder implements SQLBuilder<DescribeQuery> {
     }
 }
 
-export class ExplainStatementBuilder implements SQLBuilder<ExplainQuery> {
-    validate(statement: ExplainQuery): string | null {
-        if (statement.type !== QueryType.EXPLAIN) {
-            return 'Invalid query type';
-        }
-
-        if (!statement.statement) {
-            return 'Missing statement';
-        }
-
-        try {
-            if (statement.statement.type === QueryType.CREATE) {
-                return this.validateCreateStatement(statement.statement);
-            }
-
-            return new SelectStatementBuilder().validate(statement.statement);
-        } catch (error) {
-            return error instanceof Error ? error.message : 'Unknown error';
-        }
-    }
-
-    build(statement: ExplainQuery): string {
-        const validation = this.validate(statement);
-        if (validation) {
-            throw new Error(validation);
-        }
-
-        try {
-            let innerSql: string;
-            if (statement.statement.type === QueryType.CREATE) {
-                innerSql = new CreateStatementBuilder().build(statement.statement);
-            } else {
-                innerSql = new SelectStatementBuilder().build(statement.statement);
-            }
-
-            return `EXPLAIN ${statement.analyze ? 'ANALYZE ' : ''}${innerSql}`;
-        } catch (error) {
-            throw new Error(`Failed to build EXPLAIN statement: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    }
-
-    private validateCreateStatement(statement: CreateStatement): string | null {
-        if (statement.createType !== 'AS_SELECT') {
-            return 'Only AS SELECT create statements are supported';
-        }
-        return new CreateStatementBuilder().validate(statement);
-    }
-}
-
 export class DropStatementBuilder implements SQLBuilder<DropStatement> {
-    validate(statement: DropStatement): string | null {
+    validate (statement: DropStatement): string | null {
         if (statement.type !== QueryType.DROP) {
             return 'Invalid query type';
         }
@@ -244,8 +214,9 @@ export class DropStatementBuilder implements SQLBuilder<DropStatement> {
         return !(!statement.sourceName || !this.validateSourceName(statement.sourceName)) ? null : 'Invalid source name';
     }
 
-    build(statement: DropStatement): string {
+    build (statement: DropStatement): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -267,27 +238,31 @@ export class DropStatementBuilder implements SQLBuilder<DropStatement> {
         return `${sql};`;
     }
 
-    private validateSourceName(name: string): string | null {
+    private validateSourceName (name: string): string | null {
         const validNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/;
+
+
         return validNameRegex.test(name) ? null : 'Invalid source name';
     }
 }
 
 export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
     private readonly selectBuilder: SelectStatementBuilder;
+
     private readonly castBuilder: CastBuilder;
 
-    constructor() {
+    constructor () {
         this.selectBuilder = new SelectStatementBuilder();
         this.castBuilder = new CastBuilder();
     }
 
-    validate(statement: CreateStatement): string | null {
+    validate (statement: CreateStatement): string | null {
         if (statement.type !== QueryType.CREATE) {
             return 'Invalid query type';
         }
 
         const result = this.validateSourceName(statement.sourceName);
+
         if (result !== null) {
             return result;
         }
@@ -305,8 +280,9 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return null;
     }
 
-    build(statement: CreateStatement): string {
+    build (statement: CreateStatement): string {
         const validation = this.validate(statement);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -322,12 +298,14 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return `${sql};`;
     }
 
-    private validateSourceName(name: string): string | null {
+    private validateSourceName (name: string): string | null {
         const validNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+
         return validNameRegex.test(name) ? null : 'Invalid source name';
     }
 
-    private validateSourceCreation(statement: CreateSourceStatement<DataSourceType>): string | null {
+    private validateSourceCreation (statement: CreateSourceStatement<DataSourceType>): string | null {
         if (!statement.schema || statement.schema.length === 0) {
             return 'Schema is required';
         }
@@ -341,7 +319,7 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return this.validateCreateOptions(statement);
     }
 
-    private validateAsSelectCreation(statement: CreateAsSelectStatement<DataSourceType>): string | null {
+    private validateAsSelectCreation (statement: CreateAsSelectStatement<DataSourceType>): string | null {
         if (!statement.select || !this.selectBuilder.validate(statement.select)) {
             return 'Invalid select statement';
         }
@@ -349,7 +327,7 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return this.validateCreateOptions(statement);
     }
 
-    private validateCreateOptions(statement: CreateStatement): string | null {
+    private validateCreateOptions (statement: CreateStatement): string | null {
         const { options } = statement;
 
         if (!options.format || !options.format.valueFormat) {
@@ -372,7 +350,7 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return null;
     }
 
-    private buildCreatePrefix(statement: CreateStatement): string {
+    private buildCreatePrefix (statement: CreateStatement): string {
         let sql = 'CREATE';
 
         if (statement.ifNotExists) {
@@ -384,9 +362,11 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return sql;
     }
 
-    private buildSourceCreation(statement: CreateSourceStatement<DataSourceType>): string {
-        const schemaFields = statement.schema.map(field => {
+    private buildSourceCreation (statement: CreateSourceStatement<DataSourceType>): string {
+        const schemaFields = statement.schema.map((field) => {
             const fieldDef = `${field.name} ${this.castBuilder.build(field.type)}`;
+
+
             return field.key ? `${fieldDef} KEY` : fieldDef;
         });
 
@@ -397,16 +377,19 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
         return sql;
     }
 
-    private buildAsSelectCreation(statement: CreateAsSelectStatement<DataSourceType>): string {
+    private buildAsSelectCreation (statement: CreateAsSelectStatement<DataSourceType>): string {
         let sql = this.buildCreateOptions(statement);
+
         sql += ` AS ${this.selectBuilder.build(statement.select)}`;
+
         return sql;
     }
 
-    private buildCreateOptions(statement: CreateStatement): string {
+    private buildCreateOptions (statement: CreateStatement): string {
         const options: string[] = [];
 
         const { format } = statement.options;
+
         options.push(`VALUE_FORMAT='${format.valueFormat}'`);
         if (format.keyFormat) {
             options.push(`KEY_FORMAT='${format.keyFormat}'`);
@@ -448,14 +431,15 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
 
 export class InsertQueryBuilder implements SQLBuilder<InsertQuery> {
     private readonly selectBuilder: SelectStatementBuilder;
+
     private readonly castBuilder: CastBuilder;
 
-    constructor() {
+    constructor () {
         this.selectBuilder = new SelectStatementBuilder();
         this.castBuilder = new CastBuilder();
     }
 
-    validate(query: InsertQuery): string | null {
+    validate (query: InsertQuery): string | null {
         if (query.type !== QueryType.INSERT) {
             return 'Invalid query type';
         }
@@ -477,8 +461,9 @@ export class InsertQueryBuilder implements SQLBuilder<InsertQuery> {
         return null;
     }
 
-    build(query: InsertQuery): string {
+    build (query: InsertQuery): string {
         const validation = this.validate(query);
+
         if (validation) {
             throw new Error(validation);
         }
@@ -494,8 +479,9 @@ export class InsertQueryBuilder implements SQLBuilder<InsertQuery> {
         return `${sql};`;
     }
 
-    private validateTarget(target: { name: string; columns?: string[] }): string | null {
+    private validateTarget (target: { name: string, columns?: string[] }): string | null {
         const validNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
         if (!validNameRegex.test(target.name)) {
             return 'Invalid target name';
         }
@@ -504,45 +490,55 @@ export class InsertQueryBuilder implements SQLBuilder<InsertQuery> {
             if (target.columns.length === 0) {
                 return 'Target columns are required';
             }
-            return target.columns.every(col => validNameRegex.test(col)) ? null : 'Invalid target columns';
+
+            return target.columns.every((col) => validNameRegex.test(col)) ? null : 'Invalid target columns';
         }
 
         return null;
     }
 
-    private validateSchema(schema: { fields: Array<{ name: string; type: any; required?: boolean }> }): string | null {
-        return schema.fields.every(field => {
+    private validateSchema (schema: { fields: Array<{ name: string, type: any, required?: boolean }> }): string | null {
+        return schema.fields.every((field) => {
             const validNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+
             return (
                 validNameRegex.test(field.name) &&
                 this.castBuilder.validate(field.type)
             );
-        }) ? null : 'Invalid schema';
+        })
+            ? null
+            : 'Invalid schema';
     }
 
-    private validateValuesInsert(statement: InsertValueQuery): string | null {
+    private validateValuesInsert (statement: InsertValueQuery): string | null {
         // Must have at least one value
         if (!statement.data || statement.data.length === 0) {
             return 'No values to insert';
         }
 
         // Each value must have a column and valid literal
-        return statement.data.every(value => {
+        return statement.data.every((value) => {
             const validNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+
             return (
                 validNameRegex.test(value.column) &&
                 value.value !== undefined &&
                 (value.value.value === null || ['string', 'number', 'boolean'].includes(typeof value.value.value))
             );
-        }) ? null : 'Invalid values';
+        })
+            ? null
+            : 'Invalid values';
     }
 
-    private validateSelectInsert(statement: InsertSelectQuery): string | null {
+    private validateSelectInsert (statement: InsertSelectQuery): string | null {
         return this.selectBuilder.validate(statement.data);
     }
 
-    private buildInsertPrefix(statement: InsertValueQuery | InsertSelectQuery): string {
+    private buildInsertPrefix (statement: InsertValueQuery | InsertSelectQuery): string {
         let sql = 'INSERT INTO';
+
         sql += ` ${statement.target.name}`;
 
         if (statement.target.columns?.length) {
@@ -552,19 +548,77 @@ export class InsertQueryBuilder implements SQLBuilder<InsertQuery> {
         return sql;
     }
 
-    private buildValuesInsert(statement: InsertValueQuery): string {
-        const columns = statement.data.map(v => v.column).join(', ');
-        const values = statement.data.map(v => {
+    private buildValuesInsert (statement: InsertValueQuery): string {
+        const columns = statement.data.map((v) => v.column).join(', ');
+        const values = statement.data.map((v) => {
             const value = v.value.value;
-            if (value === null) return 'NULL';
-            if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
+
+            if (value === null) {
+                return 'NULL';
+            }
+            if (typeof value === 'string') {
+                return `'${value.replace(/'/g, '\'\'')}'`;
+            }
+
             return String(value);
         }).join(', ');
 
         return ` (${columns}) VALUES (${values})`;
     }
 
-    private buildSelectInsert(statement: InsertSelectQuery): string {
+    private buildSelectInsert (statement: InsertSelectQuery): string {
         return ` ${this.selectBuilder.build(statement.data)}`;
+    }
+}
+
+export class ExplainStatementBuilder implements SQLBuilder<ExplainQuery> {
+    validate (statement: ExplainQuery): string | null {
+        if (statement.type !== QueryType.EXPLAIN) {
+            return 'Invalid query type';
+        }
+
+        if (!statement.statement) {
+            return 'Missing statement';
+        }
+
+        try {
+            if (statement.statement.type === QueryType.CREATE) {
+                return this.validateCreateStatement(statement.statement);
+            }
+
+            return new SelectStatementBuilder().validate(statement.statement);
+        } catch (error) {
+            return error instanceof Error ? error.message : 'Unknown error';
+        }
+    }
+
+    build (statement: ExplainQuery): string {
+        const validation = this.validate(statement);
+
+        if (validation) {
+            throw new Error(validation);
+        }
+
+        try {
+            let innerSql: string;
+
+            if (statement.statement.type === QueryType.CREATE) {
+                innerSql = new CreateStatementBuilder().build(statement.statement);
+            } else {
+                innerSql = new SelectStatementBuilder().build(statement.statement);
+            }
+
+            return `EXPLAIN ${statement.analyze ? 'ANALYZE ' : ''}${innerSql}`;
+        } catch (error) {
+            throw new Error(`Failed to build EXPLAIN statement: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    private validateCreateStatement (statement: CreateStatement): string | null {
+        if (statement.createType !== 'AS_SELECT') {
+            return 'Only AS SELECT create statements are supported';
+        }
+
+        return new CreateStatementBuilder().validate(statement);
     }
 }
