@@ -81,10 +81,7 @@ export class PropertyStatementBuilder implements SQLBuilder<PropertyStatement> {
 
         switch (statement.action) {
             case PropertyAction.SET:
-                const formattedValue = this.formatPropertyValue(statement.value!);
-
-
-                return `SET '${statement.property}'=${formattedValue};`;
+                return `SET '${statement.property}'=${this.formatPropertyValue(statement.value!)};`;
 
             case PropertyAction.SHOW:
                 return `SHOW ${statement.property};`;
@@ -320,8 +317,14 @@ export class CreateStatementBuilder implements SQLBuilder<CreateStatement> {
     }
 
     private validateAsSelectCreation (statement: CreateAsSelectStatement<DataSourceType>): string | null {
-        if (!statement.select || !this.selectBuilder.validate(statement.select)) {
-            return 'Invalid select statement';
+        if (!statement.select) {
+            return 'Invalid select statement, select is required';
+        }
+
+        const selectValidation = this.selectBuilder.validate(statement.select);
+
+        if (selectValidation) {
+            return selectValidation;
         }
 
         return this.validateCreateOptions(statement);
