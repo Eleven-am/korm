@@ -1,7 +1,7 @@
 import { FormatConfig } from './base';
+import { JoinType, DataSourceType, SourceType } from './enums';
 import { SelectQuery } from './select';
 import { WindowSpec, WindowDuration } from './window';
-import { JoinType, DataSourceType, SourceType } from './enums';
 
 interface BaseSource<T extends SourceType> {
     type: T;
@@ -65,7 +65,7 @@ interface TimestampConfig {
 
 interface RetentionConfig {
     size?: number;
-    time?: WindowDuration
+    time?: WindowDuration;
 }
 
 export interface StreamSourceOptions {

@@ -23,7 +23,7 @@ export interface BetweenCondition extends BaseComparisonCondition<ComparisonOper
     right: BetweenRange;
 }
 
-export interface NullComparisonCondition extends BaseComparisonCondition<ComparisonOperator.IS_NULL | ComparisonOperator.IS_NOT_NULL> {}
+export type NullComparisonCondition = BaseComparisonCondition<ComparisonOperator.IS_NULL | ComparisonOperator.IS_NOT_NULL>;
 
 export interface OtherComparisonCondition extends BaseComparisonCondition<Exclude<ComparisonOperator,
     ComparisonOperator.IN |

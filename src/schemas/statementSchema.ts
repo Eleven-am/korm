@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import { castItemSchema } from './castSchema';
-import { formatConfigSchema } from './baseSchema';
-import { selectQuerySchema } from './selectSchema';
-import { literalExpressionSchema } from './expressionSchema';
+
 import {
     InsertType,
     QueryType,
@@ -10,20 +7,25 @@ import {
     PropertyAction,
     CreateType,
     CreateStatement,
-    KSQLStatement, ShowType,
+    KSQLStatement,
+    ShowType,
 } from '../types';
+import { formatConfigSchema } from './baseSchema';
+import { castItemSchema } from './castSchema';
+import { literalExpressionSchema } from './expressionSchema';
+import { selectQuerySchema } from './selectSchema';
 
 const insertTargetSchema = z.object({
     name: z.string(),
     columns: z.array(z.string()).optional(),
-})
+});
 
 const insertValueSchema = z.object({
     column: z.string(),
     value: z.lazy(() => literalExpressionSchema),
-})
+});
 
-function insertBaseQuery<T extends z.ZodType<any>, U extends InsertType>(dataSchema: T, type: U) {
+function insertBaseQuery<T extends z.ZodType<any>, U extends InsertType> (dataSchema: T, type: U) {
     return z.object({
         target: insertTargetSchema,
         data: dataSchema,
@@ -35,7 +37,7 @@ function insertBaseQuery<T extends z.ZodType<any>, U extends InsertType>(dataSch
                 required: z.boolean().optional(),
             })),
         }).optional(),
-    })
+    });
 }
 
 export const insertValueQuerySchema = insertBaseQuery(z.array(insertValueSchema), InsertType.VALUES);
@@ -44,7 +46,7 @@ export const insertSelectQuerySchema = insertBaseQuery(z.lazy(() => selectQueryS
 export const insertQuerySchema = z.object({
     type: z.literal(QueryType.INSERT),
     statement: z.union([z.lazy(() => insertValueQuerySchema), z.lazy(() => insertSelectQuerySchema)]),
-})
+});
 
 export const dropStatementSchema = z.object({
     type: z.literal(QueryType.DROP),
@@ -54,19 +56,19 @@ export const dropStatementSchema = z.object({
         ifExists: z.boolean().optional(),
         deleteTopic: z.boolean().optional(),
     }).optional(),
-})
+});
 
 export const terminateQuerySchema = z.object({
     type: z.literal(QueryType.TERMINATE),
     queryId: z.string(),
-})
+});
 
 export const propertyStatementSchema = z.object({
     type: z.literal(QueryType.PROPERTY),
     action: z.nativeEnum(PropertyAction),
     property: z.string(),
     value: z.string().optional(),
-})
+});
 
 const createSourceOptionsSchema = z.object({
     format: z.lazy(() => formatConfigSchema),
@@ -77,20 +79,20 @@ const createSourceOptionsSchema = z.object({
         name: z.string(),
         format: z.string().optional(),
     }).optional(),
-})
+});
 
 const tableOptionsSchema = createSourceOptionsSchema.merge(z.object({
     stateStoreName: z.string().optional(),
     caching: z.boolean().optional(),
-}))
+}));
 
 const schemaFieldSchema = z.object({
     name: z.string(),
     type: z.lazy(() => castItemSchema),
     key: z.boolean().optional(),
-})
+});
 
-function createSourceStatementSchema<T extends DataSourceType>(sourceType: T) {
+function createSourceStatementSchema<T extends DataSourceType> (sourceType: T) {
     return z.object({
         type: z.literal(QueryType.CREATE),
         createType: z.literal(CreateType.SOURCE),
@@ -102,13 +104,13 @@ function createSourceStatementSchema<T extends DataSourceType>(sourceType: T) {
             createSourceOptionsSchema,
             tableOptionsSchema,
         ]),
-    })
+    });
 }
 
 export const createSourceStatementStreamSchema = createSourceStatementSchema(DataSourceType.STREAM);
 export const createSourceStatementTableSchema = createSourceStatementSchema(DataSourceType.TABLE);
 
-function createAsSelectStatementSchema<T extends DataSourceType>(sourceType: T) {
+function createAsSelectStatementSchema<T extends DataSourceType> (sourceType: T) {
     return z.object({
         type: z.literal(QueryType.CREATE),
         createType: z.literal(CreateType.AS_SELECT),
@@ -120,7 +122,7 @@ function createAsSelectStatementSchema<T extends DataSourceType>(sourceType: T) 
             createSourceOptionsSchema,
             tableOptionsSchema,
         ]),
-    })
+    });
 }
 
 export const createAsSelectStatementStreamSchema = createAsSelectStatementSchema(DataSourceType.STREAM);
@@ -131,25 +133,25 @@ export const createStatementSchema: z.ZodType<CreateStatement> = z.union([
     createSourceStatementTableSchema,
     createAsSelectStatementStreamSchema,
     createAsSelectStatementTableSchema,
-])
+]);
 
 export const listStatementSchema = z.object({
     type: z.literal(QueryType.LIST),
     sourceType: z.nativeEnum(DataSourceType),
     extended: z.boolean().optional(),
-})
+});
 
 export const showStatementSchema = z.object({
     type: z.literal(QueryType.SHOW),
     showType: z.nativeEnum(ShowType),
     extended: z.boolean().optional(),
-})
+});
 
 export const explainQuerySchema = z.object({
     type: z.literal(QueryType.EXPLAIN),
     statement: z.union([selectQuerySchema, createAsSelectStatementStreamSchema]),
     analyze: z.boolean().optional(),
-})
+});
 
 export const describeQuerySchema = z.object({
     type: z.literal(QueryType.DESCRIBE),
@@ -158,7 +160,7 @@ export const describeQuerySchema = z.object({
         name: z.string(),
     }),
     extended: z.boolean().optional(),
-})
+});
 
 export const ksqlStatementSchema: z.ZodType<KSQLStatement> = z.union([
     selectQuerySchema,
@@ -171,5 +173,5 @@ export const ksqlStatementSchema: z.ZodType<KSQLStatement> = z.union([
     showStatementSchema,
     explainQuerySchema,
     describeQuerySchema,
-])
+]);
 

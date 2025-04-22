@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import {
     HavingConditionType,
     AggregateFunction,
@@ -18,14 +19,14 @@ import {
 import { partitionBySchema } from './partitionSchema';
 import { windowReferenceSchema, windowDefinitionSchema } from './windowSchema';
 
-function havingConditionBase<T extends HavingConditionType>(type: T) {
+function havingConditionBase<T extends HavingConditionType> (type: T) {
     return z.object({
         type: z.literal(type),
     });
 }
 
 const baseHavingAggregateCondition = havingConditionBase(HavingConditionType.AGGREGATE).merge(z.object({
-    function: z.nativeEnum(AggregateFunction),
+    'function': z.nativeEnum(AggregateFunction),
     parameters: z.array(z.lazy(() => expressionSchema)),
     window: z.lazy(() => windowReferenceSchema).optional(),
 }));

@@ -71,7 +71,7 @@ export interface AggregateSelectQuery extends BaseSelectQuery<SelectType.COLUMN>
     partitionBy?: PartitionBy;
 }
 
-export interface SelectStar extends BaseSelectQuery<SelectType.STAR> {}
+export type SelectStar = BaseSelectQuery<SelectType.STAR>;
 
 export interface WindowedSelectQuery extends Omit<AggregateSelectQuery, 'orderBy' | 'columns'> {
     columns: WindowedSelectColumn[];

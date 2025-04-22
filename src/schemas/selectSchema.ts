@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { SelectQuery, SelectType, OrderDirection, NullHandling, OrderByType, EmitType } from '../types';
 import {
     nonAggregateExpressionSchema,
@@ -15,7 +16,7 @@ const groupByOrderExpressionSchema = z.union([z.lazy(() => nonAggregateExpressio
 const windowedOrderExpressionSchema = z.union([
     nonAggregateExpressionSchema,
     aggregateExpressionSchema,
-    windowBoundaryExpressionSchema
+    windowBoundaryExpressionSchema,
 ]);
 
 function baseOrderByColumnSchema<T extends z.ZodType, D extends OrderByType> (expression: T, type: D) {
@@ -25,7 +26,7 @@ function baseOrderByColumnSchema<T extends z.ZodType, D extends OrderByType> (ex
             direction: z.nativeEnum(OrderDirection).optional(),
             nulls: z.nativeEnum(NullHandling).optional(),
             type: z.literal(type),
-       }))
+        })),
     });
 }
 
@@ -40,11 +41,11 @@ function baseSelectQuerySchema<T extends SelectType> (type: T) {
     });
 }
 
-function baseSelectColumnSchema <T extends z.ZodType>(expression: T) {
+function baseSelectColumnSchema <T extends z.ZodType> (expression: T) {
     return z.object({
         type: z.literal(SelectType.COLUMN),
         alias: z.string().optional(),
-        expression: expression,
+        expression,
     });
 }
 
